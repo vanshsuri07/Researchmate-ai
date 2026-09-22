@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import Header from './components/Header.jsx';
-import HeroSection from './components/HeroSection.jsx';
-import UploadSection from './components/UploadSection.jsx';
-import ActiveIngestionCard from './components/ActiveIngestionCard.jsx';
-import RecentPapersList from './components/RecentPapersList.jsx';
-import LibraryView from './components/LibraryView.jsx';
-import Footer from './components/Footer.jsx';
-import Modals from './components/Modals.jsx';
+import React, { useState, useEffect } from "react";
+import Header from "./components/Header.jsx";
+import HeroSection from "./components/HeroSection.jsx";
+import UploadSection from "./components/UploadSection.jsx";
+import ActiveIngestionCard from "./components/ActiveIngestionCard.jsx";
+import RecentPapersList from "./components/RecentPapersList.jsx";
+import LibraryView from "./components/LibraryView.jsx";
+import Footer from "./components/Footer.jsx";
+import Modals from "./components/Modals.jsx";
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = "http://localhost:5000/api";
 
 export default function App() {
   // Navigation & Search State
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedModel, setSelectedModel] = useState("auto");
 
   // Real Uploaded Papers List
   const [papers, setPapers] = useState(() => {
     try {
-      const saved = localStorage.getItem('researchmate_papers');
+      const saved = localStorage.getItem("researchmate_papers");
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -30,17 +31,18 @@ export default function App() {
   const [isUploading, setIsUploading] = useState(false);
 
   // Modals
-  const [selectedPaperForInsights, setSelectedPaperForInsights] = useState(null);
+  const [selectedPaperForInsights, setSelectedPaperForInsights] =
+    useState(null);
   const [selectedPaperForChat, setSelectedPaperForChat] = useState(null);
 
   // Backend Status
-  const [serverStatus, setServerStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
+  const [serverStatus, setServerStatus] = useState("checking"); // 'online' | 'offline' | 'checking'
   const [toast, setToast] = useState(null);
 
   // Persist papers in local storage
   useEffect(() => {
     try {
-      localStorage.setItem('researchmate_papers', JSON.stringify(papers));
+      localStorage.setItem("researchmate_papers", JSON.stringify(papers));
     } catch {
       // ignore
     }
@@ -53,17 +55,17 @@ export default function App() {
 
   // Check Backend Health
   const checkHealth = async () => {
-    setServerStatus('checking');
+    setServerStatus("checking");
     try {
-      const res = await fetch(`${API_BASE}/health`, { method: 'GET' });
+      const res = await fetch(`${API_BASE}/health`, { method: "GET" });
       const data = await res.json();
-      if (res.ok && data.status === 'ok') {
-        setServerStatus('online');
+      if (res.ok && data.status === "ok") {
+        setServerStatus("online");
       } else {
-        setServerStatus('offline');
+        setServerStatus("offline");
       }
     } catch {
-      setServerStatus('offline');
+      setServerStatus("offline");
     }
   };
 
@@ -79,8 +81,8 @@ export default function App() {
     if (fileArray.length === 0) return;
 
     const file = fileArray[0];
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      showToast('Please select a valid PDF file.');
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      showToast("Please select a valid PDF file.");
       return;
     }
 
@@ -88,49 +90,56 @@ export default function App() {
     setActiveUpload({
       fileName: file.name,
       progress: 25,
-      stage: 'Uploading and parsing PDF text...',
+      stage: "Uploading and parsing PDF text...",
     });
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
       setActiveUpload((prev) => ({
         ...prev,
         progress: 50,
-        stage: 'Generating vector embeddings & FAISS index...',
+        stage: "Generating vector embeddings & FAISS index...",
       }));
 
       const res = await fetch(`${API_BASE}/upload`, {
-        method: 'POST',
+        method: "POST",
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      if (!res.ok) throw new Error(data.error || "Upload failed");
 
       setActiveUpload((prev) => ({
         ...prev,
         progress: 85,
-        stage: 'Extracting paper title via LLM...',
+        stage: "Extracting paper title via LLM...",
       }));
 
       // Extract title
-      let paperTitle = file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
+      let paperTitle = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
       try {
         const titleRes = await fetch(`${API_BASE}/title`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ document_id: data.document_id }),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            document_id: data.document_id,
+            model: selectedModel,
+          }),
         });
         const titleData = await titleRes.json();
-        if (titleRes.ok && titleData.title && typeof titleData.title === 'string') {
+        if (
+          titleRes.ok &&
+          titleData.title &&
+          typeof titleData.title === "string"
+        ) {
           const raw = titleData.title.trim();
           if (
             raw.length > 0 &&
-            !raw.toLowerCase().includes('gemini_api_key') &&
-            !raw.toLowerCase().includes('api error') &&
-            !raw.toLowerCase().includes('error:') &&
-            !raw.toLowerCase().includes('please set')
+            !raw.toLowerCase().includes("gemini_api_key") &&
+            !raw.toLowerCase().includes("api error") &&
+            !raw.toLowerCase().includes("error:") &&
+            !raw.toLowerCase().includes("please set")
           ) {
             paperTitle = raw;
           }
@@ -146,14 +155,17 @@ export default function App() {
         fileName: data.filename,
         numChunks: data.num_chunks,
         fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-        uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        uploadedAt: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
 
       setPapers((prev) => [newPaper, ...prev]);
       setActiveUpload({
         fileName: file.name,
         progress: 100,
-        stage: 'Processing complete!',
+        stage: "Processing complete!",
       });
       showToast(`Indexed "${newPaper.title}" (${data.num_chunks} chunks)`);
     } catch (err) {
@@ -167,7 +179,7 @@ export default function App() {
   // Delete Paper Handler
   const handleDeletePaper = (paperId) => {
     setPapers((prev) => prev.filter((p) => p.id !== paperId));
-    showToast('Paper removed from active collection.');
+    showToast("Paper removed from active collection.");
   };
 
   // Export Synthesis Report
@@ -184,28 +196,28 @@ ${papers
 - Document ID: ${p.document_id}
 - Vector Chunks Indexed: ${p.numChunks}
 - Ingested: ${p.uploadedAt}
-`
+`,
   )
-  .join('\n')}
+  .join("\n")}
 `;
 
-    const blob = new Blob([report], { type: 'text/markdown' });
+    const blob = new Blob([report], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `ResearchMate_Collection_Report_${Date.now()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Collection report exported to Markdown.');
+    showToast("Collection report exported to Markdown.");
   };
 
   // Filtered papers by search query
   const filteredPapers = papers.filter(
     (p) =>
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.fileName.toLowerCase().includes(searchQuery.toLowerCase())
+      p.fileName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const totalChunks = papers.reduce((acc, p) => acc + (p.numChunks || 0), 0);
@@ -226,13 +238,15 @@ ${papers
         setActiveTab={setActiveTab}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
         serverStatus={serverStatus}
         onCheckHealth={checkHealth}
       />
 
       {/* Main View */}
       <main className="w-full pt-20 sm:pt-24 pb-12 flex-1">
-        {activeTab === 'dashboard' && (
+        {activeTab === "dashboard" && (
           <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8">
             <div className="relative w-full overflow-hidden">
               {/* Ambient Glows */}
@@ -277,7 +291,7 @@ ${papers
         )}
 
         {/* Library Tab */}
-        {activeTab === 'library' && (
+        {activeTab === "library" && (
           <div className="px-4 sm:px-6 lg:px-8">
             <LibraryView
               papers={filteredPapers}
@@ -294,6 +308,7 @@ ${papers
 
       {/* Real Modals */}
       <Modals
+        selectedModel={selectedModel}
         selectedPaperForInsights={selectedPaperForInsights}
         onCloseInsights={() => setSelectedPaperForInsights(null)}
         selectedPaperForChat={selectedPaperForChat}

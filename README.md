@@ -24,12 +24,16 @@ Question   -> Embed Query -> Similarity Search -> Retrieved Chunks
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate       # Git Bash/macOS/Linux
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+# Windows Command Prompt: .venv\Scripts\activate.bat
 pip install -r requirements.txt
 
-cp .env.example .env
-# Open .env and paste your real Anthropic API key
+cp .env.example .env           # Git Bash/macOS/Linux
+# Windows Command Prompt: copy .env.example .env
+# Windows PowerShell: Copy-Item .env.example .env
+# Open .env and paste your Gemini API key
 ```
 
 Run the server:
@@ -40,6 +44,10 @@ python app.py
 
 The backend will start at `http://localhost:5000`. The first request will be
 a bit slow — it downloads the embedding model (~90MB) the first time.
+
+On Windows, after the first setup, you can run `backend\start_backend.bat`
+from File Explorer or the terminal. It creates the environment if needed,
+installs dependencies, checks for `.env`, and starts the backend.
 
 ## 2. Frontend Setup
 
@@ -67,6 +75,7 @@ Open the printed URL (usually `http://localhost:5173`).
 ## Notes for your synopsis / report
 
 This implementation matches the methodology diagram:
+
 - `document_processor.py` → Stage 1 (Document Processing Pipeline)
 - `vector_store.py` → embeddings + vector database
 - `llm_engine.py` + `/api/ask` in `app.py` → Stage 2 (RAG: retrieval + LLM generation)

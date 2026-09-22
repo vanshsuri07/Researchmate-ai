@@ -23,6 +23,7 @@ import {
 const API_BASE = "http://localhost:5000/api";
 
 export default function Modals({
+  selectedModel,
   selectedPaperForInsights,
   onCloseInsights,
   selectedPaperForChat,
@@ -32,6 +33,8 @@ export default function Modals({
   const [insightTab, setInsightTab] = useState("summary");
   const [insightData, setInsightData] = useState({});
   const [loadingInsight, setLoadingInsight] = useState(false);
+  const [customSkills, setCustomSkills] = useState([]);
+  const [loadingInsightModel, setLoadingInsightModel] = useState("auto");
   const [copied, setCopied] = useState(false);
 
   // ─── Chat Modal State ───
@@ -56,6 +59,15 @@ export default function Modals({
     }
   }, [selectedPaperForChat]);
 
+  
+  // Fetch custom skills
+  useEffect(() => {
+    fetch(`${API_BASE}/skills`)
+      .then(res => res.json())
+      .then(data => setCustomSkills(data.skills || []))
+      .catch(e => console.error(e));
+  }, []);
+
   // Reset insight cache when paper changes
   useEffect(() => {
     if (selectedPaperForInsights) {
@@ -70,7 +82,9 @@ export default function Modals({
     if (!docId) return;
     if (insightData[tabKey]) return; // already cached
 
+    const requestModel = selectedModel;
     setLoadingInsight(true);
+    setLoadingInsightModel(requestModel);
     const endpointMap = {
       summary: { url: `${API_BASE}/summarize`, key: "summary" },
       keywords: { url: `${API_BASE}/keywords`, key: "keywords" },
@@ -82,17 +96,27 @@ export default function Modals({
       similar: { url: `${API_BASE}/similar-papers`, key: "similar_papers" },
     };
 
-    const target = endpointMap[tabKey];
+    let target = endpointMap[tabKey];
+    let isCustomSkill = false;
+    let customSkillId = null;
+
     if (!target) {
-      setLoadingInsight(false);
-      return;
+      const customMatch = customSkills.find(s => s.id === tabKey);
+      if (customMatch) {
+        isCustomSkill = true;
+        customSkillId = customMatch.id;
+        target = { url: `${API_BASE}/skills/run`, key: "result" };
+      } else {
+        setLoadingInsight(false);
+        return;
+      }
     }
 
     try {
       const res = await fetch(target.url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_id: docId }),
+        body: JSON.stringify({ document_id: docId, model: requestModel }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch insight");
@@ -218,6 +242,7 @@ ${insightData.future || "Not loaded"}
         body: JSON.stringify({
           document_id: selectedPaperForChat.document_id,
           question: userText,
+          model: selectedModel,
         }),
       });
       const data = await res.json();
@@ -334,7 +359,7 @@ ${insightData.future || "Not loaded"}
                 <div className="flex flex-col items-center justify-center h-48 gap-3">
                   <Loader2 className="w-8 h-8 text-[#8083ff] animate-spin" />
                   <span className="text-xs text-[#908fa0]">
-                    Generating analysis with Google Gemini LLM...
+                    Generating analysis with {loadingInsightModel || "Auto"} model...
                   </span>
                 </div>
               ) : (
