@@ -1,19 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, Menu, X, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Sparkles,
+  Menu,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 
 export default function Header({
   activeTab,
   setActiveTab,
   searchQuery,
   setSearchQuery,
+  selectedModel,
+  setSelectedModel,
   serverStatus,
   onCheckHealth,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'library', label: 'Document Library' },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "library", label: "Document Library" },
   ];
 
   return (
@@ -23,7 +33,7 @@ export default function Header({
         <div className="flex items-center gap-6 lg:gap-8">
           <div
             className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => setActiveTab("dashboard")}
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#8083ff] to-[#7bd0ff] p-[1px] shadow-[0_0_16px_rgba(128,131,255,0.4)] group-hover:shadow-[0_0_24px_rgba(128,131,255,0.6)] transition-all">
               <div className="w-full h-full bg-[#131315] rounded-[7px] flex items-center justify-center">
@@ -48,8 +58,8 @@ export default function Header({
                   onClick={() => setActiveTab(item.id)}
                   className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-[#2a2a2c] text-[#e5e1e4] shadow-[0_0_16px_rgba(192,193,255,0.15)] border border-[#464554]/50'
-                      : 'text-[#c7c4d7] hover:text-[#e5e1e4] hover:bg-[#2a2a2c]/50'
+                      ? "bg-[#2a2a2c] text-[#e5e1e4] shadow-[0_0_16px_rgba(192,193,255,0.15)] border border-[#464554]/50"
+                      : "text-[#c7c4d7] hover:text-[#e5e1e4] hover:bg-[#2a2a2c]/50"
                   }`}
                 >
                   {item.label}
@@ -59,8 +69,23 @@ export default function Header({
           </nav>
         </div>
 
-        {/* Right: Search + Server Status */}
+        {/* Right: Model Selector + Search + Server Status */}
         <div className="flex items-center gap-3 sm:gap-4 flex-1 max-w-md justify-end">
+          <label className="relative shrink-0">
+            <span className="sr-only">Select AI model</span>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              title="Select AI model"
+              className="appearance-none max-w-[9.5rem] cursor-pointer rounded-xl border border-[#353437]/80 bg-[#1c1b1d]/80 px-3 py-1.5 pr-7 text-xs text-[#c7c4d7] outline-none transition-all hover:border-[#8083ff]/50 focus:border-[#8083ff]/60 focus:ring-1 focus:ring-[#8083ff]/30"
+            >
+              <option value="auto">Auto</option>
+              <option value="fast">Fast</option>
+              <option value="groq">Groq</option>
+              <option value="reasoning">Deep Reasoning</option>
+            </select>
+          </label>
+
           {/* Search input field */}
           <div className="relative w-full max-w-xs hidden md:block">
             <div className="flex items-center w-full px-3 py-1.5 rounded-xl bg-[#1c1b1d]/80 border border-[#353437]/80 focus-within:border-[#8083ff]/60 focus-within:bg-[#201f21] transition-all">
@@ -74,7 +99,7 @@ export default function Header({
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => setSearchQuery("")}
                   className="text-xs text-[#908fa0] hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -89,12 +114,14 @@ export default function Header({
             title="Click to recheck backend connection"
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1c1b1d] border border-[#353437] text-xs font-mono transition-colors hover:border-[#8083ff]/50"
           >
-            {serverStatus === 'online' ? (
+            {serverStatus === "online" ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                <span className="text-emerald-300 font-medium">Backend Live</span>
+                <span className="text-emerald-300 font-medium">
+                  Backend Live
+                </span>
               </>
-            ) : serverStatus === 'checking' ? (
+            ) : serverStatus === "checking" ? (
               <>
                 <RefreshCw className="w-3 h-3 text-[#7bd0ff] animate-spin" />
                 <span className="text-[#7bd0ff]">Connecting...</span>
@@ -102,7 +129,9 @@ export default function Header({
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
-                <span className="text-rose-300 font-medium">Backend Offline</span>
+                <span className="text-rose-300 font-medium">
+                  Backend Offline
+                </span>
               </>
             )}
           </button>
@@ -112,7 +141,11 @@ export default function Header({
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="sm:hidden p-2 rounded-lg text-[#c7c4d7] hover:text-[#e5e1e4] hover:bg-[#2a2a2c] transition-colors"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
@@ -129,8 +162,8 @@ export default function Header({
               }}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === item.id
-                  ? 'bg-[#2a2a2c] text-[#e5e1e4] font-semibold'
-                  : 'text-[#c7c4d7] hover:bg-[#201f21]'
+                  ? "bg-[#2a2a2c] text-[#e5e1e4] font-semibold"
+                  : "text-[#c7c4d7] hover:bg-[#201f21]"
               }`}
             >
               {item.label}

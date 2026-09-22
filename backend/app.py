@@ -35,6 +35,7 @@ from werkzeug.utils import secure_filename
 from document_processor import process_pdf
 from vector_store import DocumentVectorStore
 import llm_engine
+from skills import registry as skills_registry
 from scholar_api import search_related_papers
 
 app = Flask(__name__)
@@ -157,84 +158,152 @@ def ask_question():
         return jsonify({"error": "Question is required"}), 400
 
     relevant_chunks = doc["store"].search(question, top_k=4)
-    answer = llm_engine.answer_question(question, relevant_chunks)
+    model = data.get("model", "auto")
+    answer = llm_engine.answer_question(question, relevant_chunks, model=model)
     return jsonify({"answer": answer, "sources_used": len(relevant_chunks)})
 
 
 @app.route("/api/summarize", methods=["POST"])
 def summarize():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"summary": llm_engine.summarize_document(doc["sample"])})
+    return jsonify({"summary": llm_engine.summarize_document(doc["sample"], model=model)})
 
 
 @app.route("/api/keywords", methods=["POST"])
 def keywords():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"keywords": llm_engine.extract_keywords(doc["sample"])})
+    return jsonify({"keywords": llm_engine.extract_keywords(doc["sample"], model=model)})
 
 
 @app.route("/api/citations", methods=["POST"])
 def citations():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"citations": llm_engine.analyze_citations(doc["sample"])})
+    return jsonify({"citations": llm_engine.analyze_citations(doc["sample"], model=model)})
 
 
 @app.route("/api/research-gaps", methods=["POST"])
 def research_gaps():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"research_gaps": llm_engine.identify_research_gaps(doc["sample"])})
+    return jsonify({"research_gaps": llm_engine.identify_research_gaps(doc["sample"], model=model)})
 
 
 @app.route("/api/future-work", methods=["POST"])
 def future_work():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"future_work": llm_engine.suggest_future_work(doc["sample"])})
+    return jsonify({"future_work": llm_engine.suggest_future_work(doc["sample"], model=model)})
 
 
 @app.route("/api/flashcards", methods=["POST"])
 def flashcards():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"flashcards": llm_engine.generate_flashcards(doc["sample"])})
+    return jsonify({"flashcards": llm_engine.generate_flashcards(doc["sample"], model=model)})
 
 
 @app.route("/api/glossary", methods=["POST"])
 def glossary():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"glossary": llm_engine.generate_glossary(doc["sample"])})
+    return jsonify({"glossary": llm_engine.generate_glossary(doc["sample"], model=model)})
 
 
 @app.route("/api/title", methods=["POST"])
 def title():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"title": llm_engine.extract_title(doc["sample"])})
+    return jsonify({"title": llm_engine.extract_title(doc["sample"], model=model)})
 
 
 @app.route("/api/similar-papers", methods=["POST"])
 def similar_papers():
-    doc = _get_document_or_404(request.get_json(force=True).get("document_id"))
+    data = request.get_json(force=True)
+    doc = _get_document_or_404(data.get("document_id"))
+    model = data.get("model", "auto")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
     # First extract the title, then search for similar papers
-    paper_title = llm_engine.extract_title(doc["sample"])
+    paper_title = llm_engine.extract_title(doc["sample"], model=model)
     results = search_related_papers(paper_title, limit=5)
     return jsonify({"similar_papers": results, "query_title": paper_title})
 
+
+
+# --- Skills & Plugins Endpoints ---
+
+@app.route("/api/skills", methods=["GET"])
+def get_skills():
+    skills = skills_registry.list_skills()
+    return jsonify({"skills": skills})
+
+@app.route("/api/skills/upload", methods=["POST"])
+def upload_skill():
+    try:
+        skill_data = request.get_json(force=True)
+        if not skill_data.get("name") or not skill_data.get("system_prompt"):
+            return jsonify({"error": "Missing required fields (name, system_prompt)"}), 400
+        
+        saved_skill = skills_registry.save_skill(skill_data)
+        return jsonify({"message": "Skill uploaded successfully", "skill": saved_skill})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/skills/run", methods=["POST"])
+def run_skill():
+    data = request.get_json(force=True)
+    doc_id = data.get("document_id")
+    skill_id = data.get("skill_id")
+    model = data.get("model", "auto")
+    
+    doc = _get_document_or_404(doc_id)
+    if doc is None:
+        return jsonify({"error": "Document not found"}), 404
+        
+    skill = skills_registry.get_skill(skill_id)
+    if skill is None:
+        return jsonify({"error": "Skill not found"}), 404
+        
+    try:
+        sample_text = doc.get("sample", "")
+        # Format the user prompt using the template
+        template = skill.get("user_prompt_template", "{sample}")
+        user_prompt = template.replace("{sample}", sample_text)
+        
+        # We can reuse _ask_litellm from llm_engine to run custom system/user prompts!
+        result = llm_engine._ask_litellm(skill.get("system_prompt"), user_prompt, model)
+        return jsonify({"result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --- End Skills & Plugins Endpoints ---
 
 @app.route("/api/health", methods=["GET"])
 def health():
