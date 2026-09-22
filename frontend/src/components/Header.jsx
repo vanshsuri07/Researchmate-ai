@@ -24,7 +24,7 @@ export default function Header({
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "library", label: "Document Library" },
-    { id: "skills", label: "Skills & Plugins" },
+    { id: "skills", label: "Plugins & Connectors" },
   ];
 
   return (

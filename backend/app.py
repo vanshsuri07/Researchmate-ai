@@ -37,9 +37,10 @@ from vector_store import DocumentVectorStore
 import llm_engine
 from skills import registry as skills_registry
 from scholar_api import search_related_papers
+from connectors import arxiv_connector, url_connector, semantic_connector
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 import json
 
@@ -95,6 +96,42 @@ def _load_stored_documents():
 
 # Load any previously saved documents upon startup
 _load_stored_documents()
+
+
+@app.route("/api/documents", methods=["GET"])
+def list_documents():
+    docs = []
+    for doc_id, info in DOCUMENTS.items():
+        fname = info.get("filename", "document.pdf")
+        clean_title = fname
+        if " [" in fname and fname.endswith("]"):
+            clean_title = fname.split(" [")[0]
+        docs.append({
+            "id": doc_id,
+            "document_id": doc_id,
+            "filename": fname,
+            "title": clean_title,
+            "numChunks": len(info.get("chunks", [])),
+            "fileSize": "Indexed",
+            "uploadedAt": "Saved",
+        })
+    return jsonify({"documents": docs})
+
+
+@app.route("/api/documents/<doc_id>", methods=["DELETE"])
+def delete_document(doc_id):
+    if doc_id not in DOCUMENTS:
+        return jsonify({"error": "Document not found"}), 404
+
+    DOCUMENTS.pop(doc_id)
+    index_path = os.path.join(STORAGE_FOLDER, f"{doc_id}.faiss")
+    try:
+        if os.path.exists(index_path):
+            os.remove(index_path)
+        _save_meta()
+        return jsonify({"message": "Document deleted", "document_id": doc_id})
+    except OSError as e:
+        return jsonify({"error": f"Document removed from memory but storage cleanup failed: {e}"}), 500
 
 
 @app.route("/api/upload", methods=["POST"])
@@ -307,6 +344,153 @@ def run_skill():
         return jsonify({"error": str(e)}), 500
 
 # --- End Skills & Plugins Endpoints ---
+
+# ─── Connector Endpoints ──────────────────────────────────────────────────────
+
+def _ingest_chunks(title: str, chunks: list, source_label: str) -> dict:
+    """
+    Shared helper: takes text chunks, builds a VectorStore, persists to disk,
+    registers the document in DOCUMENTS{} and saves metadata.
+    Returns the document record suitable for JSON response.
+    """
+    doc_id = str(uuid.uuid4())
+    store = DocumentVectorStore(chunks)
+    index_file = os.path.join(STORAGE_FOLDER, f"{doc_id}.faiss")
+    store.save(index_file)
+
+    DOCUMENTS[doc_id] = {
+        "store": store,
+        "sample": " ".join(chunks[:6]),
+        "filename": f"{title[:80]} [{source_label}]",
+        "chunks": chunks,
+    }
+    _save_meta()
+
+    return {
+        "document_id": doc_id,
+        "filename": DOCUMENTS[doc_id]["filename"],
+        "num_chunks": len(chunks),
+        "title": title,
+        "source": source_label,
+    }
+
+
+@app.route("/api/connectors/arxiv/search", methods=["POST"])
+def arxiv_search():
+    """Search arXiv by keyword. Returns a list of papers (no import yet)."""
+    data = request.get_json(force=True)
+    query = data.get("query", "").strip()
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    try:
+        results = arxiv_connector.search(query, limit=6)
+        return jsonify({"results": results})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error: {e}"}), 500
+
+
+@app.route("/api/connectors/arxiv/import", methods=["POST"])
+def arxiv_import():
+    """
+    Import a paper from arXiv by ID or keyword.
+    Body: { "arxiv_id": "1706.03762" }
+    """
+    data = request.get_json(force=True)
+    arxiv_id = data.get("arxiv_id", "").strip()
+    if not arxiv_id:
+        return jsonify({"error": "arxiv_id is required"}), 400
+
+    try:
+        paper = arxiv_connector.fetch_by_id(arxiv_id)
+        title, chunks = arxiv_connector.build_chunks_from_abstract(paper)
+        if not chunks:
+            return jsonify({"error": "Could not extract any text from arXiv abstract"}), 422
+        record = _ingest_chunks(title, chunks, "arXiv")
+        record["authors"] = paper.get("authors", [])
+        record["year"] = paper.get("year")
+        record["abstract_preview"] = paper.get("abstract", "")[:300]
+        return jsonify(record)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:
+        return jsonify({"error": f"arXiv import failed: {e}"}), 500
+
+
+@app.route("/api/connectors/url/import", methods=["POST"])
+def url_import():
+    """
+    Import a webpage by URL.
+    Body: { "url": "https://..." }
+    Returns a warning field if content is sparse.
+    """
+    data = request.get_json(force=True)
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "url is required"}), 400
+    if not url.startswith(("http://", "https://")):
+        return jsonify({"error": "url must start with http:// or https://"}), 400
+
+    try:
+        scraped = url_connector.scrape_url(url)
+        title, chunks = url_connector.build_chunks_from_url(scraped)
+        if not chunks:
+            return jsonify({
+                "error": "No usable text could be extracted from this URL.",
+                "warning": scraped.get("warning"),
+            }), 422
+
+        record = _ingest_chunks(title, chunks, "Web")
+        record["warning"] = scraped.get("warning")
+        return jsonify(record)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:
+        return jsonify({"error": f"URL import failed: {e}"}), 500
+
+
+@app.route("/api/connectors/semantic/search", methods=["POST"])
+def semantic_search():
+    """Search Semantic Scholar. Returns paper list (no import yet)."""
+    data = request.get_json(force=True)
+    query = data.get("query", "").strip()
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    try:
+        results = semantic_connector.search(query, limit=6)
+        return jsonify({"results": results})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:
+        return jsonify({"error": f"Semantic Scholar search failed: {e}"}), 500
+
+
+@app.route("/api/connectors/semantic/import", methods=["POST"])
+def semantic_import():
+    """
+    Import a paper from Semantic Scholar by its data payload.
+    Body: { "paper": { title, authors, year, abstract, ... } }
+    """
+    data = request.get_json(force=True)
+    paper = data.get("paper")
+    if not paper or not paper.get("title"):
+        return jsonify({"error": "paper object with title is required"}), 400
+
+    try:
+        title, chunks = semantic_connector.build_chunks_from_paper(paper)
+        if not chunks:
+            return jsonify({"error": "No usable text in this paper's abstract"}), 422
+        record = _ingest_chunks(title, chunks, "Semantic Scholar")
+        record["authors"] = paper.get("authors", [])
+        record["year"] = paper.get("year")
+        record["abstract_preview"] = paper.get("abstract", "")[:300]
+        return jsonify(record)
+    except Exception as e:
+        return jsonify({"error": f"Semantic Scholar import failed: {e}"}), 500
+
+# ─── End Connector Endpoints ──────────────────────────────────────────────────
+
 
 @app.route("/api/health", methods=["GET"])
 def health():
