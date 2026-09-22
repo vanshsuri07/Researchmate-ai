@@ -5,6 +5,7 @@ import UploadSection from "./components/UploadSection.jsx";
 import ActiveIngestionCard from "./components/ActiveIngestionCard.jsx";
 import RecentPapersList from "./components/RecentPapersList.jsx";
 import LibraryView from "./components/LibraryView.jsx";
+import SkillsHub from "./components/SkillsHub.jsx";
 import Footer from "./components/Footer.jsx";
 import Modals from "./components/Modals.jsx";
 
@@ -301,6 +302,8 @@ ${papers
             />
           </div>
         )}
+
+        {activeTab === "skills" && <SkillsHub />}
       </main>
 
       {/* Footer */}
@@ -309,6 +312,7 @@ ${papers
       {/* Real Modals */}
       <Modals
         selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
         selectedPaperForInsights={selectedPaperForInsights}
         onCloseInsights={() => setSelectedPaperForInsights(null)}
         selectedPaperForChat={selectedPaperForChat}
