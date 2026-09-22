@@ -24,6 +24,7 @@ export default function Header({
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "library", label: "Document Library" },
+    { id: "skills", label: "Skills & Plugins" },
   ];
 
   return (
@@ -71,20 +72,7 @@ export default function Header({
 
         {/* Right: Model Selector + Search + Server Status */}
         <div className="flex items-center gap-3 sm:gap-4 flex-1 max-w-md justify-end">
-          <label className="relative shrink-0">
-            <span className="sr-only">Select AI model</span>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              title="Select AI model"
-              className="appearance-none max-w-[9.5rem] cursor-pointer rounded-xl border border-[#353437]/80 bg-[#1c1b1d]/80 px-3 py-1.5 pr-7 text-xs text-[#c7c4d7] outline-none transition-all hover:border-[#8083ff]/50 focus:border-[#8083ff]/60 focus:ring-1 focus:ring-[#8083ff]/30"
-            >
-              <option value="auto">Auto</option>
-              <option value="fast">Fast</option>
-              <option value="groq">Groq</option>
-              <option value="reasoning">Deep Reasoning</option>
-            </select>
-          </label>
+          
 
           {/* Search input field */}
           <div className="relative w-full max-w-xs hidden md:block">

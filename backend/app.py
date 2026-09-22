@@ -293,13 +293,16 @@ def run_skill():
         
     try:
         sample_text = doc.get("sample", "")
+        custom_query = data.get("custom_query", "").strip()
         # Format the user prompt using the template
         template = skill.get("user_prompt_template", "{sample}")
         user_prompt = template.replace("{sample}", sample_text)
+        if custom_query:
+            user_prompt += f"\n\nUser specific question / instruction: {custom_query}"
         
         # We can reuse _ask_litellm from llm_engine to run custom system/user prompts!
         result = llm_engine._ask_litellm(skill.get("system_prompt"), user_prompt, model)
-        return jsonify({"result": result})
+        return jsonify({"result": result, "skill_name": skill.get("name")})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
