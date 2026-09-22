@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Upload, Loader2, Save, Wrench, CheckCircle, Code } from "lucide-react";
+import { Sparkles, Upload, Loader2, Save, Wrench, CheckCircle, Code, Plug } from "lucide-react";
+import ConnectorsPanel from "./ConnectorsPanel.jsx";
 
 const API_BASE = "http://localhost:5000/api";
 
-export default function SkillsHub() {
+export default function SkillsHub({ onImportSuccess, setActiveTab }) {
+  const [activeHubTab, setActiveHubTab] = useState("connectors");
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -70,19 +72,56 @@ export default function SkillsHub() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Title Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8083ff]/15 border border-[#8083ff]/30 text-[#c0c1ff] text-xs font-mono mb-3">
           <Wrench className="w-3.5 h-3.5" />
-          <span>Extensibility Engine • Phase 1</span>
+          <span>Extensibility Engine</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-[#e5e1e4] tracking-tight">
-          Connectors & Skills Hub
+          Plugins & Connectors
         </h1>
         <p className="text-sm text-[#908fa0] mt-1">
-          Install and create custom analytical Agent skills to process and critique your research papers.
+          Import papers from external sources and create custom AI skills for your research workflow.
         </p>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-1 p-1 bg-[#1c1b1d]/80 border border-[#353437]/60 rounded-xl w-fit mb-8">
+        <button
+          onClick={() => setActiveHubTab("connectors")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeHubTab === "connectors"
+              ? "bg-[#2a2a2c] text-[#e5e1e4] border border-[#464554]/50 shadow-sm"
+              : "text-[#908fa0] hover:text-[#c7c4d7]"
+          }`}
+        >
+          <Plug className="w-3.5 h-3.5 text-[#7bd0ff]" />
+          Connectors
+        </button>
+        <button
+          onClick={() => setActiveHubTab("skills")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeHubTab === "skills"
+              ? "bg-[#2a2a2c] text-[#e5e1e4] border border-[#464554]/50 shadow-sm"
+              : "text-[#908fa0] hover:text-[#c7c4d7]"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#c0c1ff]" />
+          Skills
+        </button>
+      </div>
+
+      {/* Connectors Tab */}
+      {activeHubTab === "connectors" && (
+        <ConnectorsPanel
+          onImportSuccess={onImportSuccess}
+          onViewInLibrary={() => setActiveTab && setActiveTab("library")}
+        />
+      )}
+
+      {/* Skills Tab */}
+      {activeHubTab === "skills" && (
+      <div>
       {/* Feedback Toast */}
       {toast && (
         <div
@@ -220,6 +259,8 @@ export default function SkillsHub() {
           )}
         </div>
       </div>
+      </div>
+      )}
     </div>
   );
 }

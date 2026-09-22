@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 numpy==2.2.6
 werkzeug==3.0.4
 litellm
+html2text

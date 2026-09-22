@@ -76,6 +76,38 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Sync papers from backend storage on startup
+  useEffect(() => {
+    fetch(`${API_BASE}/documents`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!Array.isArray(data.documents)) return;
+        setPapers(data.documents);
+      })
+      .catch((err) => console.log("Failed to sync backend docs:", err));
+  }, []);
+
+  const handleImportSuccess = (record) => {
+    const newPaper = {
+      id: record.document_id,
+      document_id: record.document_id,
+      title: record.title || record.filename,
+      fileName: record.filename,
+      numChunks: record.num_chunks,
+      fileSize: `${record.source || "Cloud"} Import`,
+      uploadedAt: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setPapers((prev) => {
+      if (prev.some((p) => p.document_id === newPaper.document_id)) return prev;
+      return [newPaper, ...prev];
+    });
+    showToast(`Imported "${newPaper.title}" (${record.num_chunks} chunks)`);
+  };
+
   // Real File Upload Handler
   const handleFileUpload = async (files) => {
     const fileArray = Array.from(files);
@@ -178,9 +210,21 @@ export default function App() {
   };
 
   // Delete Paper Handler
-  const handleDeletePaper = (paperId) => {
-    setPapers((prev) => prev.filter((p) => p.id !== paperId));
-    showToast("Paper removed from active collection.");
+  const handleDeletePaper = async (paperId) => {
+    try {
+      const res = await fetch(`${API_BASE}/documents/${paperId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+
+      setPapers((prev) =>
+        prev.filter((paper) => (paper.document_id || paper.id) !== paperId),
+      );
+      showToast("Paper deleted from storage.");
+    } catch (err) {
+      showToast(`Delete failed: ${err.message}`);
+    }
   };
 
   // Export Synthesis Report
@@ -303,7 +347,12 @@ ${papers
           </div>
         )}
 
-        {activeTab === "skills" && <SkillsHub />}
+        {activeTab === "skills" && (
+          <SkillsHub
+            onImportSuccess={handleImportSuccess}
+            setActiveTab={setActiveTab}
+          />
+        )}
       </main>
 
       {/* Footer */}
