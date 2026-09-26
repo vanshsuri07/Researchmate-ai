@@ -68,17 +68,17 @@ export default function ModelSelector({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex items-center gap-2 rounded-xl border border-[#353437]/80 bg-[#1c1b1d]/90 hover:bg-[#252427] hover:border-[#8083ff]/60 px-2.5 py-1.5 text-xs text-[#e5e1e4] transition-all cursor-pointer shadow-sm ${
+        className={`flex items-center ${compact ? "w-[150px] gap-1.5" : "gap-2"} rounded-xl border border-[#353437]/80 bg-[#1c1b1d]/90 hover:bg-[#252427] hover:border-[#8083ff]/60 px-2.5 py-1.5 text-xs text-[#e5e1e4] transition-all cursor-pointer shadow-sm ${
           open ? "ring-2 ring-[#8083ff]/40 border-[#8083ff]" : ""
         }`}
         title="Select AI Model"
       >
         <span className="text-sm select-none">{activeModel.icon}</span>
-        <span className="font-medium tracking-tight">
+        <span className="font-medium tracking-tight truncate min-w-0 flex-1 text-left">
           {compact ? activeModel.label.split(" ")[0] : activeModel.label}
         </span>
         <span
-          className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md border ${activeModel.badgeColor} hidden sm:inline-block`}
+          className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md border ${activeModel.badgeColor} shrink-0 ${compact ? "inline-block" : "hidden sm:inline-block"}`}
         >
           {activeModel.badge}
         </span>
@@ -94,7 +94,7 @@ export default function ModelSelector({
         <div
           className={`absolute ${
             dropUp ? "bottom-full mb-2" : "top-full mt-2"
-          } right-0 z-50 w-72 sm:w-80 rounded-2xl bg-[#131315]/95 backdrop-blur-xl border border-[#353437] shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-150`}
+          } right-0 z-50 w-[min(20rem,calc(100vw-1rem))] rounded-2xl bg-[#131315]/95 backdrop-blur-xl border border-[#353437] shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-150`}
         >
           {/* Header */}
           <div className="px-3 py-2 border-b border-[#353437]/60 mb-1 flex items-center justify-between">
@@ -126,7 +126,9 @@ export default function ModelSelector({
                       : "hover:bg-[#1c1b1d] text-[#c7c4d7] border border-transparent"
                   }`}
                 >
-                  <div className="text-lg shrink-0 mt-0.5 select-none">{m.icon}</div>
+                  <div className="text-lg shrink-0 mt-0.5 select-none">
+                    {m.icon}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1 mb-0.5">
                       <span

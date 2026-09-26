@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import Header from "./components/Header.jsx";
 import HeroSection from "./components/HeroSection.jsx";
 import UploadSection from "./components/UploadSection.jsx";
+import ComparePapersCard from "./components/ComparePapersCard.jsx";
 import ActiveIngestionCard from "./components/ActiveIngestionCard.jsx";
 import RecentPapersList from "./components/RecentPapersList.jsx";
 import LibraryView from "./components/LibraryView.jsx";
 import SkillsHub from "./components/SkillsHub.jsx";
 import Footer from "./components/Footer.jsx";
 import Modals from "./components/Modals.jsx";
+import WorkspaceView from "./components/Workspace/WorkspaceView.jsx";
+import FloatingChatWidget from "./components/FloatingChatWidget.jsx";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -31,10 +34,30 @@ export default function App() {
   const [activeUpload, setActiveUpload] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Modals
+  // Workspace State
+  const [activeWorkspacePaper, setActiveWorkspacePaper] = useState(null);
+  const [workspaceInitialTab, setWorkspaceInitialTab] = useState("insights"); // "insights" | "chat"
+
+  // Modals (kept for backward compatibility or simple use cases if needed, but we will route primarily to workspace)
   const [selectedPaperForInsights, setSelectedPaperForInsights] =
     useState(null);
   const [selectedPaperForChat, setSelectedPaperForChat] = useState(null);
+
+  // Global Persistent Chat State
+  const [globalChatPaper, setGlobalChatPaper] = useState(null);
+  const [isChatPoppedOut, setIsChatPoppedOut] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(false);
+
+  useEffect(() => {
+    if (activeWorkspacePaper) {
+      setGlobalChatPaper(activeWorkspacePaper);
+      setIsChatVisible(true);
+      // Dock it initially when opening a workspace, unless they already popped it out explicitly
+    } else if (!isChatPoppedOut) {
+      // If we close workspace and it's NOT popped out, hide it
+      setIsChatVisible(false);
+    }
+  }, [activeWorkspacePaper]);
 
   // Backend Status
   const [serverStatus, setServerStatus] = useState("checking"); // 'online' | 'offline' | 'checking'
@@ -277,86 +300,130 @@ ${papers
         </div>
       )}
 
-      {/* Header */}
-      <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        selectedModel={selectedModel}
-        setSelectedModel={setSelectedModel}
-        serverStatus={serverStatus}
-        onCheckHealth={checkHealth}
-      />
+      {/* Global Header */}
+      {!activeWorkspacePaper && (
+        <Header
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          serverStatus={serverStatus}
+          onCheckHealth={checkHealth}
+        />
+      )}
 
       {/* Main View */}
-      <main className="w-full pt-20 sm:pt-24 pb-12 flex-1">
-        {activeTab === "dashboard" && (
-          <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8">
-            <div className="relative w-full overflow-hidden">
-              {/* Ambient Glows */}
-              <div className="absolute top-12 left-1/4 w-96 h-96 bg-[#8083ff]/10 rounded-full blur-3xl pointer-events-none -z-10" />
-              <div className="absolute top-48 right-1/4 w-[28rem] h-[28rem] bg-[#00a6e0]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      {activeWorkspacePaper ? (
+        <main className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
+          <WorkspaceView
+            paper={activeWorkspacePaper}
+            availablePapers={papers}
+            onSelectPaper={setActiveWorkspacePaper}
+            initialTab={workspaceInitialTab}
+            onClose={() => setActiveWorkspacePaper(null)}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            serverStatus={serverStatus}
+            onDeletePaper={(paperId) => {
+              handleDeletePaper(paperId);
+              setActiveWorkspacePaper(null);
+            }}
+            isChatPoppedOut={isChatPoppedOut}
+            isChatVisible={isChatVisible}
+            onToggleChat={() => setIsChatVisible(!isChatVisible)}
+          />
+        </main>
+      ) : (
+        <>
+          <main className="w-full pt-20 sm:pt-24 pb-12 flex-1">
+            {activeTab === "dashboard" && (
+              <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8">
+                <div className="relative w-full overflow-hidden">
+                  {/* Ambient Glows */}
+                  <div className="absolute top-12 left-1/4 w-96 h-96 bg-[#8083ff]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+                  <div className="absolute top-48 right-1/4 w-[28rem] h-[28rem] bg-[#00a6e0]/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-              <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">
-                {/* Hero Section */}
-                <HeroSection
-                  totalPapers={papers.length}
-                  totalChunks={totalChunks}
-                  serverStatus={serverStatus}
-                />
-
-                {/* Upload Zone & Ingestion Progress */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                  <div className="lg:col-span-8">
-                    <UploadSection
-                      onFileUpload={handleFileUpload}
-                      isUploading={isUploading}
-                    />
-                  </div>
-                  <div className="lg:col-span-4">
-                    <ActiveIngestionCard
-                      activeUpload={activeUpload}
+                  <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">
+                    {/* Hero Section */}
+                    <HeroSection
                       totalPapers={papers.length}
+                      totalChunks={totalChunks}
+                      serverStatus={serverStatus}
+                    />
+
+                    {/* Upload Zone & Ingestion Progress */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                      <div className="lg:col-span-8 flex flex-col gap-6">
+                        <UploadSection
+                          onFileUpload={handleFileUpload}
+                          isUploading={isUploading}
+                        />
+                      </div>
+                      <div className="lg:col-span-4 sticky top-24">
+                        <ActiveIngestionCard
+                          activeUpload={activeUpload}
+                          totalPapers={papers.length}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Full-width Paper Comparison */}
+                    <ComparePapersCard
+                      indexedPapers={papers}
+                      showToast={showToast}
+                    />
+
+                    {/* Papers List */}
+                    <RecentPapersList
+                      papers={filteredPapers}
+                      onOpenInsights={(paper) => {
+                        setActiveWorkspacePaper(paper);
+                        setWorkspaceInitialTab("insights");
+                      }}
+                      onOpenChat={(paper) => {
+                        setActiveWorkspacePaper(paper);
+                        setWorkspaceInitialTab("chat");
+                      }}
+                      onDeletePaper={handleDeletePaper}
+                      onExportInsights={handleExportInsights}
                     />
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Papers List */}
-                <RecentPapersList
+            {/* Library Tab */}
+            {activeTab === "library" && (
+              <div className="px-4 sm:px-6 lg:px-8">
+                <LibraryView
                   papers={filteredPapers}
-                  onOpenInsights={(paper) => setSelectedPaperForInsights(paper)}
-                  onOpenChat={(paper) => setSelectedPaperForChat(paper)}
+                  onOpenInsights={(p) => {
+                    setActiveWorkspacePaper(p);
+                    setWorkspaceInitialTab("insights");
+                  }}
+                  onOpenChat={(p) => {
+                    setActiveWorkspacePaper(p);
+                    setWorkspaceInitialTab("chat");
+                  }}
                   onDeletePaper={handleDeletePaper}
-                  onExportInsights={handleExportInsights}
                 />
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Library Tab */}
-        {activeTab === "library" && (
-          <div className="px-4 sm:px-6 lg:px-8">
-            <LibraryView
-              papers={filteredPapers}
-              onOpenInsights={(p) => setSelectedPaperForInsights(p)}
-              onOpenChat={(p) => setSelectedPaperForChat(p)}
-              onDeletePaper={handleDeletePaper}
-            />
-          </div>
-        )}
+            {activeTab === "skills" && (
+              <SkillsHub
+                onImportSuccess={handleImportSuccess}
+                setActiveTab={setActiveTab}
+              />
+            )}
+          </main>
 
-        {activeTab === "skills" && (
-          <SkillsHub
-            onImportSuccess={handleImportSuccess}
-            setActiveTab={setActiveTab}
-          />
-        )}
-      </main>
-
-      {/* Footer */}
-      <Footer />
+          {/* Footer */}
+          <Footer />
+        </>
+      )}
 
       {/* Real Modals */}
       <Modals
@@ -371,6 +438,19 @@ ${papers
           setSelectedPaperForInsights(null);
           setSelectedPaperForChat(null);
         }}
+      />
+
+      {/* Global Floating Chat */}
+      <FloatingChatWidget
+        paper={globalChatPaper}
+        availablePapers={papers}
+        onSelectPaper={setActiveWorkspacePaper}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+        isPoppedOut={isChatPoppedOut}
+        setIsPoppedOut={setIsChatPoppedOut}
+        isVisible={isChatVisible}
+        setIsVisible={setIsChatVisible}
       />
     </div>
   );
