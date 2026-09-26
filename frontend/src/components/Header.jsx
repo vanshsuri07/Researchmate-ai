@@ -36,7 +36,7 @@ export default function Header({
             className="flex items-center gap-2 cursor-pointer group"
             onClick={() => setActiveTab("dashboard")}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#8083ff] to-[#7bd0ff] p-[1px] shadow-[0_0_16px_rgba(128,131,255,0.4)] group-hover:shadow-[0_0_24px_rgba(128,131,255,0.6)] transition-all">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-[#8083ff] to-[#7bd0ff] p-px shadow-[0_0_16px_rgba(128,131,255,0.4)] group-hover:shadow-[0_0_24px_rgba(128,131,255,0.6)] transition-all">
               <div className="w-full h-full bg-[#131315] rounded-[7px] flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-[#c0c1ff]" />
               </div>
@@ -72,8 +72,6 @@ export default function Header({
 
         {/* Right: Model Selector + Search + Server Status */}
         <div className="flex items-center gap-3 sm:gap-4 flex-1 max-w-md justify-end">
-          
-
           {/* Search input field */}
           <div className="relative w-full max-w-xs hidden md:block">
             <div className="flex items-center w-full px-3 py-1.5 rounded-xl bg-[#1c1b1d]/80 border border-[#353437]/80 focus-within:border-[#8083ff]/60 focus-within:bg-[#201f21] transition-all">
@@ -100,26 +98,22 @@ export default function Header({
           <button
             onClick={onCheckHealth}
             title="Click to recheck backend connection"
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1c1b1d] border border-[#353437] text-xs font-mono transition-colors hover:border-[#8083ff]/50"
+            className="flex w-7 h-7 items-center justify-center rounded-full bg-[#1c1b1d] border border-[#353437] text-xs font-mono transition-colors hover:border-[#8083ff]/50"
           >
             {serverStatus === "online" ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                <span className="text-emerald-300 font-medium">
-                  Backend Live
-                </span>
+                <span className="text-emerald-300 font-medium"></span>
               </>
             ) : serverStatus === "checking" ? (
               <>
                 <RefreshCw className="w-3 h-3 text-[#7bd0ff] animate-spin" />
-                <span className="text-[#7bd0ff]">Connecting...</span>
+                <span className="text-[#7bd0ff]"></span>
               </>
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
-                <span className="text-rose-300 font-medium">
-                  Backend Offline
-                </span>
+                <span className="text-rose-300 font-medium"></span>
               </>
             )}
           </button>

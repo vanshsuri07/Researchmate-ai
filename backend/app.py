@@ -18,8 +18,10 @@ Endpoints:
 """
 
 import os
+import re
 from pathlib import Path
 import uuid
+import requests
 from dotenv import load_dotenv
 
 # Load .env explicitly from backend folder and parent
@@ -46,9 +48,11 @@ import json
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 STORAGE_FOLDER = os.path.join(os.path.dirname(__file__), "storage")
+PDF_FOLDER = os.path.join(STORAGE_FOLDER, "pdfs")
 META_FILE = os.path.join(STORAGE_FOLDER, "documents_meta.json")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(STORAGE_FOLDER, exist_ok=True)
+os.makedirs(PDF_FOLDER, exist_ok=True)
 
 # In-memory store: document_id -> {"store": DocumentVectorStore, "sample": str, "filename": str, "chunks": list}
 DOCUMENTS = {}
@@ -125,14 +129,72 @@ def delete_document(doc_id):
 
     DOCUMENTS.pop(doc_id)
     index_path = os.path.join(STORAGE_FOLDER, f"{doc_id}.faiss")
+    pdf_path = os.path.join(PDF_FOLDER, f"{doc_id}.pdf")
     try:
         if os.path.exists(index_path):
             os.remove(index_path)
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
         _save_meta()
         return jsonify({"message": "Document deleted", "document_id": doc_id})
     except OSError as e:
         return jsonify({"error": f"Document removed from memory but storage cleanup failed: {e}"}), 500
 
+
+from flask import send_file
+
+@app.route("/api/documents/<doc_id>/pdf", methods=["GET"])
+def get_document_pdf(doc_id):
+    if doc_id not in DOCUMENTS:
+        return jsonify({"error": "Document not found"}), 404
+        
+    pdf_path = os.path.join(PDF_FOLDER, f"{doc_id}.pdf")
+    if os.path.exists(pdf_path):
+        return send_file(pdf_path, mimetype="application/pdf")
+        
+    # Check if it's an arXiv paper and auto-fetch
+    doc_info = DOCUMENTS[doc_id]
+    sample = doc_info.get("sample", "")
+    filename = doc_info.get("filename", "")
+    
+    arxiv_id = None
+    m = re.search(r"arXiv ID:\s*([0-9v.]+)", sample, re.IGNORECASE)
+    if m:
+        arxiv_id = m.group(1).replace(".pdf", "")
+    else:
+        m2 = re.search(r"([0-9]{4}\.[0-9]{4,5}(?:v[0-9]+)?)", filename)
+        if m2:
+            arxiv_id = m2.group(1).replace(".pdf", "")
+            
+    if arxiv_id:
+        try:
+            arxiv_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            }
+            resp = requests.get(arxiv_url, headers=headers, timeout=25)
+            if resp.status_code == 200 and resp.content[:4] == b"%PDF":
+                with open(pdf_path, "wb") as f:
+                    f.write(resp.content)
+                return send_file(pdf_path, mimetype="application/pdf")
+        except Exception as e:
+            print(f"[PDF Fetch] Failed to download arXiv PDF: {e}")
+
+    return jsonify({"error": "PDF file not found locally", "has_pdf": false}), 404
+
+
+@app.route("/api/documents/<doc_id>/content", methods=["GET"])
+def get_document_content(doc_id):
+    if doc_id not in DOCUMENTS:
+        return jsonify({"error": "Document not found"}), 404
+    
+    doc = DOCUMENTS[doc_id]
+    return jsonify({
+        "document_id": doc_id,
+        "filename": doc.get("filename"),
+        "chunks": doc.get("chunks", []),
+        "sample": doc.get("sample", "")
+    })
 
 @app.route("/api/upload", methods=["POST"])
 def upload_document():
@@ -145,12 +207,14 @@ def upload_document():
 
     filename = secure_filename(file.filename)
     doc_id = str(uuid.uuid4())
-    save_path = os.path.join(UPLOAD_FOLDER, f"{doc_id}_{filename}")
+    save_path = os.path.join(PDF_FOLDER, f"{doc_id}.pdf")
     file.save(save_path)
 
     try:
         chunks = process_pdf(save_path)
         if not chunks:
+            if os.path.exists(save_path):
+                os.remove(save_path)
             return jsonify({"error": "Could not extract any text from this PDF"}), 422
 
         store = DocumentVectorStore(chunks)
@@ -170,9 +234,10 @@ def upload_document():
             "filename": filename,
             "num_chunks": len(chunks),
         })
-    finally:
+    except Exception as e:
         if os.path.exists(save_path):
             os.remove(save_path)
+        raise e
 
 
 def _get_document_or_404(doc_id):
