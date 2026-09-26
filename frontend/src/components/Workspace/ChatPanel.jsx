@@ -378,11 +378,11 @@ export default function ChatPanel({
   return (
     <div className="flex flex-col h-full bg-[#0e0e10]">
       {/* Chat Header */}
-      <div className="flex items-center justify-between px-4 h-11 border-b border-[#2a292d] bg-[#1a191c] shrink-0">
-        <h3 className="text-xs font-bold text-[#e5e1e4] flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-2 px-3 h-17 border-b border-[#2a292d] bg-[#1a191c] shrink-0">
+        <h3 className="min-w-0 shrink text-xs font-bold text-[#e5e1e4] flex items-center gap-1.5">
           <MessageSquareCode className="w-3.5 h-3.5 text-[#8083ff]" /> Chat
         </h3>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <ModelSelector
             selectedModel={selectedModel}
             onSelectModel={setSelectedModel}

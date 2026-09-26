@@ -86,7 +86,7 @@ export default function WorkspaceView({
         {paper && isChatVisible && !isChatPoppedOut && (
           <div
             id="chat-dock-target"
-            className="w-[380px] lg:w-[420px] xl:w-[440px] shrink-0 overflow-hidden relative"
+            className="basis-[420px] w-[420px] min-w-[420px] max-w-[420px] grow-0 shrink-0 overflow-hidden relative"
           />
         )}
       </div>
@@ -95,7 +95,7 @@ export default function WorkspaceView({
         <button
           type="button"
           onClick={onToggleChat}
-          className="absolute right-4 top-16 z-30 flex items-center gap-2 rounded-xl bg-[#8083ff] px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-[#7073ef] transition-colors cursor-pointer"
+          className="absolute right-4 top-25 z-30 flex items-center gap-2 rounded-xl bg-[#8083ff] px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-[#7073ef] transition-colors cursor-pointer"
           title="Open chat"
         >
           <MessageSquare className="w-4 h-4" />
