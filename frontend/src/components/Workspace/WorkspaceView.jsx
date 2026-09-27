@@ -78,8 +78,8 @@ export default function WorkspaceView({
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* LEFT: PDF Viewer */}
-        <div className="flex-1 min-w-0 border-r border-[#2a292d] overflow-hidden">
-          {paper && <PdfViewerPanel paper={paper} />}
+        <div className="flex-1 min-w-0 border-r border-[#2a292d] overflow-hidden flex flex-col">
+          {paper && <PdfViewerPanel key={paper.id || paper.document_id} paper={paper} />}
         </div>
 
         {/* RIGHT: Chat Panel Dock Target */}
@@ -95,7 +95,7 @@ export default function WorkspaceView({
         <button
           type="button"
           onClick={onToggleChat}
-          className="absolute right-4 top-25 z-30 flex items-center gap-2 rounded-xl bg-[#8083ff] px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-[#7073ef] transition-colors cursor-pointer"
+          className="absolute right-7 top-40 z-60 flex items-center gap-2 rounded-xl bg-[#8083ff] px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-[#7073ef] transition-colors cursor-pointer"
           title="Open chat"
         >
           <MessageSquare className="w-4 h-4" />

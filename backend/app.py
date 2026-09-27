@@ -259,10 +259,24 @@ def ask_question():
     if not question:
         return jsonify({"error": "Question is required"}), 400
 
-    relevant_chunks = doc["store"].search(question, top_k=4)
+    results = doc["store"].search_with_indices(question, top_k=4)
+    relevant_chunks = [r["text"] for r in results]
     model = data.get("model", "auto")
     answer = llm_engine.answer_question(question, relevant_chunks, model=model)
-    return jsonify({"answer": answer, "sources_used": len(relevant_chunks)})
+
+    source_chunks = []
+    for r in results:
+        source_chunks.append({
+            "chunk_index": r["chunk_index"],
+            "page_number": r["chunk_index"] + 1,
+            "text_snippet": r["text"][:150].strip(),
+        })
+
+    return jsonify({
+        "answer": answer,
+        "sources_used": len(relevant_chunks),
+        "source_chunks": source_chunks,
+    })
 
 
 @app.route("/api/summarize", methods=["POST"])

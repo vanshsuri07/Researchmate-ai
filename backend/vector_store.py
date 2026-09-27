@@ -61,3 +61,20 @@ class DocumentVectorStore:
             if 0 <= idx < len(self.chunks):
                 results.append(self.chunks[idx])
         return results
+
+    def search_with_indices(self, query: str, top_k: int = 4) -> list[dict]:
+        """Return the top_k most relevant chunks with their indices and scores."""
+        model = get_embedding_model()
+        query_vec = model.encode([query], convert_to_numpy=True, normalize_embeddings=True)
+        scores, indices = self.index.search(query_vec.astype(np.float32), top_k)
+
+        results = []
+        for i, idx in enumerate(indices[0]):
+            if 0 <= idx < len(self.chunks):
+                results.append({
+                    "chunk_index": int(idx),
+                    "text": self.chunks[idx],
+                    "score": float(scores[0][i]),
+                })
+        return results
+
