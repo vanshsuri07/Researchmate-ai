@@ -250,19 +250,45 @@ def _get_document_or_404(doc_id):
 @app.route("/api/ask", methods=["POST"])
 def ask_question():
     data = request.get_json(force=True)
-    doc_id = data.get("document_id")
+    # Support multiple document IDs for cross-document query
+    doc_ids = data.get("document_ids", [])
+    if "document_id" in data and data["document_id"] not in doc_ids:
+        doc_ids.append(data["document_id"])
+        
     question = data.get("question", "").strip()
+    notes = data.get("notes", [])
 
-    doc = _get_document_or_404(doc_id)
-    if doc is None:
-        return jsonify({"error": "Document not found. Upload a PDF first."}), 404
+    if not doc_ids:
+        return jsonify({"error": "No documents specified."}), 400
     if not question:
         return jsonify({"error": "Question is required"}), 400
 
-    results = doc["store"].search_with_indices(question, top_k=4)
-    relevant_chunks = [r["text"] for r in results]
+    results = []
+    # Search across all requested documents
+    for d_id in doc_ids:
+        doc = _get_document_or_404(d_id)
+        if doc is None:
+            continue
+            
+        doc_results = doc["store"].search_with_indices(question, top_k=3)
+        # Append paper title to chunks for context
+        for r in doc_results:
+            r["document_id"] = d_id
+            r["paper_title"] = doc["metadata"]["title"] if doc["metadata"] else d_id
+            # Prefix text with paper title so LLM knows where it came from
+            r["text_for_llm"] = f"[From Paper: {r['paper_title']}]\n{r['text']}"
+            results.append(r)
+
+    if not results and not notes:
+        return jsonify({"error": "No documents or notes found to search."}), 404
+
+    # Sort results by score across all documents
+    results.sort(key=lambda x: x["score"], reverse=True)
+    results = results[:6] # Top 6 across all docs
+
+    relevant_chunks = [r["text_for_llm"] for r in results]
     model = data.get("model", "auto")
-    answer = llm_engine.answer_question(question, relevant_chunks, model=model)
+    answer = llm_engine.answer_question(question, relevant_chunks, model=model, notes=notes)
 
     source_chunks = []
     for r in results:
@@ -270,6 +296,8 @@ def ask_question():
             "chunk_index": r["chunk_index"],
             "page_number": r["chunk_index"] + 1,
             "text_snippet": r["text"][:150].strip(),
+            "paper_title": r["paper_title"],
+            "document_id": r["document_id"]
         })
 
     return jsonify({

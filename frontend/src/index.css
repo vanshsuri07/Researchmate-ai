@@ -188,3 +188,36 @@
 .animate-pulse-highlight {
   animation: pulse-highlight 600ms ease-out;
 }
+
+/* ── Library View Additions ── */
+
+@keyframes slide-in-from-bottom-4 {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.animate-in.slide-in-from-bottom-4 {
+  animation: slide-in-from-bottom-4 200ms ease-out;
+}
+
+/* Thin scrollbar for activity strip */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a2c transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #2a2a2c;
+  border-radius: 9999px;
+}

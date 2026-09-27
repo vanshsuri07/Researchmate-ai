@@ -282,18 +282,26 @@ ${papers
   };
 
   // Filtered papers by search query
-  const filteredPapers = papers.filter(
-    (p) =>
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.fileName.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const normalizedSearchQuery = searchQuery.toLowerCase();
+  const filteredPapers = papers.filter((p) => {
+    const title = (p.title || p.filename || "").toLowerCase();
+    const fileName = (p.fileName || p.filename || "").toLowerCase();
+    return (
+      title.includes(normalizedSearchQuery) ||
+      fileName.includes(normalizedSearchQuery)
+    );
+  });
 
   const totalChunks = papers.reduce((acc, p) => acc + (p.numChunks || 0), 0);
 
-  const rootHeightClass = activeWorkspacePaper ? "h-screen overflow-hidden" : "min-h-screen";
+  const rootHeightClass = activeWorkspacePaper
+    ? "h-screen overflow-hidden"
+    : "min-h-screen";
 
   return (
-    <div className={`${rootHeightClass} bg-[#131315] text-[#e5e1e4] flex flex-col selection:bg-[#8083ff]/30 selection:text-[#c0c1ff]`}>
+    <div
+      className={`${rootHeightClass} bg-[#131315] text-[#e5e1e4] flex flex-col`}
+    >
       {/* Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-[#201f21] border border-[#8083ff]/50 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-xs text-[#e5e1e4] flex items-center gap-2 animate-in slide-in-from-bottom-5 duration-200">
@@ -410,6 +418,7 @@ ${papers
                     setWorkspaceInitialTab("chat");
                   }}
                   onDeletePaper={handleDeletePaper}
+                  onUpload={() => setActiveTab("dashboard")}
                 />
               </div>
             )}

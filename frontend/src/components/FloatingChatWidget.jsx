@@ -13,7 +13,6 @@ import {
   Maximize2,
   Minimize2,
   FileText,
-  MessageCircle,
   Highlighter,
   StickyNote,
 } from "lucide-react";
@@ -156,8 +155,8 @@ export default function FloatingChatWidget({
         chatInputRef.current?.focus();
       }, 50);
     };
-    window.addEventListener('ask-ai', handleAskAIEvent);
-    return () => window.removeEventListener('ask-ai', handleAskAIEvent);
+    window.addEventListener("ask-ai", handleAskAIEvent);
+    return () => window.removeEventListener("ask-ai", handleAskAIEvent);
   }, [setIsVisible]);
 
   useEffect(() => {
@@ -237,9 +236,28 @@ export default function FloatingChatWidget({
     chatInputRef.current?.focus();
   };
 
+  const [mentionedPapers, setMentionedPapers] = useState([]);
+
   const handleSelectPaper = (selectedPaper) => {
-    onSelectPaper?.(selectedPaper);
-    setChatInput("");
+    const title = selectedPaper.title || selectedPaper.fileName;
+    // Replace the @[query] with @Title
+    const replaced = chatInput.replace(/(^|\s)@([^\s]*)$/, `$1@${title} `);
+    setChatInput(replaced);
+
+    // Add to mentioned list if not already there
+    setMentionedPapers((prev) => {
+      if (
+        !prev.find(
+          (p) =>
+            (p.document_id || p.id) ===
+            (selectedPaper.document_id || selectedPaper.id),
+        )
+      ) {
+        return [...prev, selectedPaper];
+      }
+      return prev;
+    });
+
     setPaperQuery("");
     setShowPaperMenu(false);
     chatInputRef.current?.focus();
@@ -350,11 +368,42 @@ export default function FloatingChatWidget({
                 ? JSON.stringify(val, null, 2)
                 : String(val);
           } else {
+            // Find which mentioned papers are in the user text
+            const actualMentions = mentionedPapers.filter((p) =>
+              userText.includes(`@${p.title || p.fileName}`),
+            );
+            const docIds = [activeDocId];
+            actualMentions.forEach((p) => {
+              const id = p.document_id || p.id;
+              if (!docIds.includes(id)) docIds.push(id);
+            });
+
+            // Gather notes for these docs
+            let notes = [];
+            docIds.forEach((id) => {
+              try {
+                const storedHighlights =
+                  JSON.parse(localStorage.getItem(`highlights_${id}`)) || [];
+                const storedBookmarks =
+                  JSON.parse(localStorage.getItem(`bookmarks_${id}`)) || [];
+                storedHighlights.forEach((h) => {
+                  if (h.note)
+                    notes.push(`Note on "${h.selectedText}": ${h.note}`);
+                  else notes.push(`Highlight: "${h.selectedText}"`);
+                });
+                storedBookmarks.forEach((b) => {
+                  notes.push(`Bookmark: ${b.label}`);
+                });
+              } catch {}
+            });
+
             const res = await fetch(`${API_BASE}/ask`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 document_id: activeDocId,
+                document_ids: docIds,
+                notes: notes,
                 question: userText,
                 model: selectedModel,
               }),
@@ -422,18 +471,14 @@ export default function FloatingChatWidget({
     submitMessage(chatInput);
   };
 
-  // If floating chat is hidden and popped out, render a FAB
+  const handleCloseChat = () => {
+    setIsVisible(false);
+    if (isPoppedOut) setIsPoppedOut(false);
+  };
+
+  // Do not render a floating reopen button when chat is hidden.
   if (!isVisible && isPoppedOut) {
-    return (
-      <div className="fixed bottom-6 right-6 z-[100] transition-transform duration-300 scale-100">
-        <button
-          onClick={() => setIsVisible(true)}
-          className="bg-gradient-to-r from-[#8083ff] to-[#6c6fff] hover:opacity-90 text-white p-4 rounded-full shadow-[0_0_20px_rgba(128,131,255,0.4)] cursor-pointer transition-all hover:scale-105 active:scale-95"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </button>
-      </div>
-    );
+    return null;
   }
 
   // If entirely hidden and not popped out (e.g. docked but closed), render nothing
@@ -474,7 +519,7 @@ export default function FloatingChatWidget({
           </button>
 
           <button
-            onClick={() => setIsVisible(false)}
+            onClick={handleCloseChat}
             className="text-[#908fa0] hover:text-[#e5e1e4] transition-colors p-1 rounded hover:bg-[#2a2a2c] cursor-pointer"
             title="Close chat"
           >
@@ -525,101 +570,201 @@ export default function FloatingChatWidget({
             </div>
 
             {/* Evidence Cards */}
-            {msg.sourceChunks && msg.sourceChunks.length > 0 && !msg.loading && (
-              <div className="mt-1.5 space-y-1.5 w-full">
-                {msg.sourceChunks.slice(0, 1).map((sc, scIdx) => (
-                  <div key={scIdx} className="bg-[#0e0e10] border border-[#2a292d] rounded-lg p-2.5">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <FileText className="w-3 h-3 text-[#8083ff]" />
-                      <span className="text-[10px] font-semibold text-[#c0c1ff]">Source</span>
-                      <span className="text-[9px] text-[#908fa0]">·</span>
-                      <span className="text-[10px] font-medium text-[#e5e1e4]">Page {sc.page_number}</span>
-                    </div>
-                    <p className="text-[10px] text-[#908fa0] italic border-l-2 border-[#8083ff]/40 pl-2 mb-2 line-clamp-2">
-                      "{sc.text_snippet}"
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('highlight-from-chat', {
-                            detail: { chunkIndex: sc.chunk_index, text: sc.text_snippet }
-                          }));
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#8083ff]/10 border border-[#8083ff]/25 text-[#c0c1ff] text-[9px] font-semibold hover:bg-[#8083ff]/20 transition-colors cursor-pointer"
-                      >
-                        <Highlighter className="w-2.5 h-2.5" />
-                        Highlight in PDF
-                      </button>
-                      <button
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('save-note-from-chat', {
-                            detail: {
-                              chunkIndex: sc.chunk_index,
-                              text: sc.text_snippet,
-                              noteContent: `AI Evidence: "${msg.text?.substring(0, 80)}..."`
-                            }
-                          }));
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-semibold hover:bg-amber-500/20 transition-colors cursor-pointer"
-                      >
-                        <StickyNote className="w-2.5 h-2.5" />
-                        Save as Note
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {msg.sourceChunks.length > 1 && (
-                  <details className="group">
-                    <summary className="text-[9px] text-[#908fa0] cursor-pointer hover:text-[#c0c1ff] transition-colors px-1">
-                      Show {msg.sourceChunks.length - 1} more source{msg.sourceChunks.length > 2 ? 's' : ''}
-                    </summary>
-                    <div className="mt-1.5 space-y-1.5">
-                      {msg.sourceChunks.slice(1).map((sc, scIdx) => (
-                        <div key={scIdx + 1} className="bg-[#0e0e10] border border-[#2a292d] rounded-lg p-2.5">
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <FileText className="w-3 h-3 text-[#8083ff]" />
-                            <span className="text-[10px] font-semibold text-[#c0c1ff]">Source</span>
-                            <span className="text-[9px] text-[#908fa0]">·</span>
-                            <span className="text-[10px] font-medium text-[#e5e1e4]">Page {sc.page_number}</span>
-                          </div>
-                          <p className="text-[10px] text-[#908fa0] italic border-l-2 border-[#8083ff]/40 pl-2 mb-2 line-clamp-2">
-                            "{sc.text_snippet}"
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                window.dispatchEvent(new CustomEvent('highlight-from-chat', {
-                                  detail: { chunkIndex: sc.chunk_index, text: sc.text_snippet }
-                                }));
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#8083ff]/10 border border-[#8083ff]/25 text-[#c0c1ff] text-[9px] font-semibold hover:bg-[#8083ff]/20 transition-colors cursor-pointer"
-                            >
-                              <Highlighter className="w-2.5 h-2.5" />
-                              Highlight in PDF
-                            </button>
-                            <button
-                              onClick={() => {
-                                window.dispatchEvent(new CustomEvent('save-note-from-chat', {
+            {msg.sourceChunks &&
+              msg.sourceChunks.length > 0 &&
+              !msg.loading && (
+                <div className="mt-1.5 space-y-1.5 w-full">
+                  {msg.sourceChunks.slice(0, 1).map((sc, scIdx) => (
+                    <div
+                      key={scIdx}
+                      className="bg-[#0e0e10] border border-[#2a292d] rounded-lg p-2.5"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <FileText className="w-3 h-3 text-[#8083ff]" />
+                        <span
+                          className="text-[10px] font-semibold text-[#c0c1ff] truncate max-w-[120px]"
+                          title={sc.paper_title || "Source"}
+                        >
+                          {sc.paper_title || "Source"}
+                        </span>
+                        <span className="text-[9px] text-[#908fa0]">·</span>
+                        <span className="text-[10px] font-medium text-[#e5e1e4]">
+                          Page {sc.page_number}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#908fa0] italic border-l-2 border-[#8083ff]/40 pl-2 mb-2 line-clamp-2">
+                        "{sc.text_snippet}"
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const activeDocId = paper?.document_id || paper?.id;
+                            if (
+                              sc.document_id &&
+                              sc.document_id !== activeDocId
+                            ) {
+                              const switchPaper = availablePapers.find(
+                                (p) =>
+                                  (p.id || p.document_id) === sc.document_id,
+                              );
+                              if (switchPaper) {
+                                onSelectPaper?.(switchPaper);
+                                // Wait for switch before jumping
+                                setTimeout(() => {
+                                  window.dispatchEvent(
+                                    new CustomEvent("highlight-from-chat", {
+                                      detail: {
+                                        chunkIndex: sc.chunk_index,
+                                        text: sc.text_snippet,
+                                      },
+                                    }),
+                                  );
+                                }, 500);
+                              }
+                            } else {
+                              window.dispatchEvent(
+                                new CustomEvent("highlight-from-chat", {
                                   detail: {
                                     chunkIndex: sc.chunk_index,
                                     text: sc.text_snippet,
-                                    noteContent: `AI Evidence: "${msg.text?.substring(0, 80)}..."`
-                                  }
-                                }));
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-semibold hover:bg-amber-500/20 transition-colors cursor-pointer"
-                            >
-                              <StickyNote className="w-2.5 h-2.5" />
-                              Save as Note
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                                  },
+                                }),
+                              );
+                            }
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#8083ff]/10 border border-[#8083ff]/25 text-[#c0c1ff] text-[9px] font-semibold hover:bg-[#8083ff]/20 transition-colors cursor-pointer"
+                        >
+                          <Highlighter className="w-2.5 h-2.5" />
+                          {sc.document_id &&
+                          sc.document_id !== (paper?.document_id || paper?.id)
+                            ? "Switch & Highlight"
+                            : "Highlight in PDF"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            window.dispatchEvent(
+                              new CustomEvent("save-note-from-chat", {
+                                detail: {
+                                  chunkIndex: sc.chunk_index,
+                                  text: sc.text_snippet,
+                                  noteContent: `AI Evidence: "${msg.text?.substring(0, 80)}..."`,
+                                },
+                              }),
+                            );
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-semibold hover:bg-amber-500/20 transition-colors cursor-pointer"
+                        >
+                          <StickyNote className="w-2.5 h-2.5" />
+                          Save as Note
+                        </button>
+                      </div>
                     </div>
-                  </details>
-                )}
-              </div>
-            )}
+                  ))}
+                  {msg.sourceChunks.length > 1 && (
+                    <details className="group">
+                      <summary className="text-[9px] text-[#908fa0] cursor-pointer hover:text-[#c0c1ff] transition-colors px-1">
+                        Show {msg.sourceChunks.length - 1} more source
+                        {msg.sourceChunks.length > 2 ? "s" : ""}
+                      </summary>
+                      <div className="mt-1.5 space-y-1.5">
+                        {msg.sourceChunks.slice(1).map((sc, scIdx) => (
+                          <div
+                            key={scIdx + 1}
+                            className="bg-[#0e0e10] border border-[#2a292d] rounded-lg p-2.5"
+                          >
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <FileText className="w-3 h-3 text-[#8083ff]" />
+                              <span
+                                className="text-[10px] font-semibold text-[#c0c1ff] truncate max-w-[120px]"
+                                title={sc.paper_title || "Source"}
+                              >
+                                {sc.paper_title || "Source"}
+                              </span>
+                              <span className="text-[9px] text-[#908fa0]">
+                                ·
+                              </span>
+                              <span className="text-[10px] font-medium text-[#e5e1e4]">
+                                Page {sc.page_number}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#908fa0] italic border-l-2 border-[#8083ff]/40 pl-2 mb-2 line-clamp-2">
+                              "{sc.text_snippet}"
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const activeDocId =
+                                    paper?.document_id || paper?.id;
+                                  if (
+                                    sc.document_id &&
+                                    sc.document_id !== activeDocId
+                                  ) {
+                                    const switchPaper = availablePapers.find(
+                                      (p) =>
+                                        (p.id || p.document_id) ===
+                                        sc.document_id,
+                                    );
+                                    if (switchPaper) {
+                                      onSelectPaper?.(switchPaper);
+                                      setTimeout(() => {
+                                        window.dispatchEvent(
+                                          new CustomEvent(
+                                            "highlight-from-chat",
+                                            {
+                                              detail: {
+                                                chunkIndex: sc.chunk_index,
+                                                text: sc.text_snippet,
+                                              },
+                                            },
+                                          ),
+                                        );
+                                      }, 500);
+                                    }
+                                  } else {
+                                    window.dispatchEvent(
+                                      new CustomEvent("highlight-from-chat", {
+                                        detail: {
+                                          chunkIndex: sc.chunk_index,
+                                          text: sc.text_snippet,
+                                        },
+                                      }),
+                                    );
+                                  }
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#8083ff]/10 border border-[#8083ff]/25 text-[#c0c1ff] text-[9px] font-semibold hover:bg-[#8083ff]/20 transition-colors cursor-pointer"
+                              >
+                                <Highlighter className="w-2.5 h-2.5" />
+                                {sc.document_id &&
+                                sc.document_id !==
+                                  (paper?.document_id || paper?.id)
+                                  ? "Switch & Highlight"
+                                  : "Highlight in PDF"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  window.dispatchEvent(
+                                    new CustomEvent("save-note-from-chat", {
+                                      detail: {
+                                        chunkIndex: sc.chunk_index,
+                                        text: sc.text_snippet,
+                                        noteContent: `AI Evidence: "${msg.text?.substring(0, 80)}..."`,
+                                      },
+                                    }),
+                                  );
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-semibold hover:bg-amber-500/20 transition-colors cursor-pointer"
+                              >
+                                <StickyNote className="w-2.5 h-2.5" />
+                                Save as Note
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
           </div>
         ))}
 

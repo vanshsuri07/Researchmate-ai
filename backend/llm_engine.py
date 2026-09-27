@@ -81,14 +81,19 @@ def _ask_litellm(system_prompt: str, user_prompt: str, model_preset: str = "auto
         except Exception as fallback_err:
             return f"Error querying model: {str(e)} | Fallback failed: {str(fallback_err)}"
 
-def answer_question(question: str, retrieved_chunks: list[str], model: str = "auto") -> str:
+def answer_question(question: str, retrieved_chunks: list[str], model: str = "auto", notes: list[str] = None) -> str:
     context = "\n\n---\n\n".join(retrieved_chunks)
+    
+    notes_context = ""
+    if notes and len(notes) > 0:
+        notes_context = "\n\nUser's Personal Notes & Highlights:\n" + "\n".join(f"- {note}" for note in notes)
+
     system_prompt = (
         "You are a research assistant. Answer the user's question using ONLY the "
-        "provided context from the research paper. If the answer is not in the "
-        "context, say so clearly instead of guessing."
+        "provided context from the research paper(s) and the user's personal notes. "
+        "If the answer is not in the context, say so clearly instead of guessing."
     )
-    user_prompt = f"Context from the paper:\n{context}\n\nQuestion: {question}"
+    user_prompt = f"Context from the paper(s):\n{context}{notes_context}\n\nQuestion: {question}"
     return _ask_litellm(system_prompt, user_prompt, model)
 
 def summarize_document(full_text_sample: str, model: str = "auto") -> str:

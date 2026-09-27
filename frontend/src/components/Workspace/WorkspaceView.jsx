@@ -13,6 +13,8 @@ import PdfViewerPanel from "./PdfViewerPanel.jsx";
 import InsightsPanel from "./InsightsPanel.jsx";
 import ChatPanel from "./ChatPanel.jsx";
 
+const API_BASE = "http://localhost:5000/api";
+
 export default function WorkspaceView({
   paper,
   availablePapers,
@@ -28,6 +30,67 @@ export default function WorkspaceView({
   onToggleChat,
 }) {
   const [insightsExpanded, setInsightsExpanded] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+  const documentId = paper?.document_id || paper?.id;
+  const pdfUrl = documentId ? `${API_BASE}/documents/${documentId}/pdf` : "";
+
+  const showActionMessage = (message) => {
+    setActionMessage(message);
+    window.setTimeout(() => setActionMessage(""), 2500);
+  };
+
+  const handleDownload = async () => {
+    if (!pdfUrl) return;
+
+    try {
+      const response = await fetch(pdfUrl);
+      if (!response.ok) throw new Error("PDF is not available");
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = (
+        paper?.fileName ||
+        paper?.filename ||
+        paper?.title ||
+        "document"
+      )
+        .replace(/\.pdf$/i, "")
+        .replace(/[<>:"/\\|?*]+/g, "-")
+        .trim();
+      link.href = downloadUrl;
+      link.download = `${filename || "document"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+      showActionMessage("PDF downloaded");
+    } catch (error) {
+      showActionMessage(error.message);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!pdfUrl) return;
+
+    const shareData = {
+      title: paper?.title || "Research paper",
+      text: "Research paper from ResearchMate AI",
+      url: pdfUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        showActionMessage("Share sheet opened");
+      } else {
+        await navigator.clipboard.writeText(pdfUrl);
+        showActionMessage("PDF link copied");
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") showActionMessage("Unable to share PDF");
+    }
+  };
 
   return (
     <div className="relative flex flex-col h-full w-full overflow-hidden bg-[#0e0e10]">
@@ -54,12 +117,14 @@ export default function WorkspaceView({
         {/* Right: Actions */}
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={handleShare}
             className="p-1.5 rounded-lg hover:bg-[#2a2a2c] text-[#908fa0] hover:text-[#e5e1e4] transition-colors cursor-pointer"
             title="Share"
           >
             <Share2 className="w-4 h-4" />
           </button>
           <button
+            onClick={handleDownload}
             className="p-1.5 rounded-lg hover:bg-[#2a2a2c] text-[#908fa0] hover:text-[#e5e1e4] transition-colors cursor-pointer"
             title="Download"
           >
@@ -68,10 +133,15 @@ export default function WorkspaceView({
           <div className="h-4 w-px bg-[#353437]" />
 
           {/* Start */}
-          <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-[#8083ff] to-[#6c6fff] hover:opacity-90 text-white text-[11px] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(128,131,255,0.3)]">
+          <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-linear-to-r from-[#8083ff] to-[#6c6fff] hover:opacity-90 text-white text-[11px] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(128,131,255,0.3)]">
             <Play className="w-3 h-3 fill-white" />
             Start
           </button>
+          {actionMessage && (
+            <span className="text-[10px] text-[#7bd0ff] whitespace-nowrap">
+              {actionMessage}
+            </span>
+          )}
         </div>
       </div>
 
@@ -79,7 +149,9 @@ export default function WorkspaceView({
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* LEFT: PDF Viewer */}
         <div className="flex-1 min-w-0 border-r border-[#2a292d] overflow-hidden flex flex-col">
-          {paper && <PdfViewerPanel key={paper.id || paper.document_id} paper={paper} />}
+          {paper && (
+            <PdfViewerPanel key={paper.id || paper.document_id} paper={paper} />
+          )}
         </div>
 
         {/* RIGHT: Chat Panel Dock Target */}
