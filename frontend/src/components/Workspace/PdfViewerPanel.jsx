@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-import "react-pdf/dist/esm/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
 
 import AnnotationSidebar from "./AnnotationSidebar.jsx";
 import MiniBookmarkStrip from "./MiniBookmarkStrip.jsx";
@@ -27,6 +27,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 const API_BASE = "http://localhost:5000/api";
+const cMapUrl = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`;
+const standardFontDataUrl = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`;
 const HIGHLIGHT_COLORS = {
   Important: "rgba(168, 85, 247, 0.25)",
   Definition: "rgba(59, 130, 246, 0.25)",
@@ -117,6 +119,7 @@ export default function PdfViewerPanel({ paper }) {
   const [pulsingHighlightId, setPulsingHighlightId] = useState(null);
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
   const [scale, setScale] = useState(1.2);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState("notes");
@@ -124,10 +127,35 @@ export default function PdfViewerPanel({ paper }) {
 
   const containerRef = useRef(null);
 
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [hasPdf]);
+
   // Custom CSS for absolute highlights
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = `
+      .pdf-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        background-color: #525659;
+        padding: 20px;
+        overflow-y: auto;
+        height: 100%;
+      }
+      .react-pdf__Page__canvas {
+        margin: 0 auto;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+      }
       .highlight-rect {
         position: absolute;
         cursor: pointer;
@@ -145,8 +173,9 @@ export default function PdfViewerPanel({ paper }) {
         z-index: 11;
       }
       .react-pdf__Page { 
+        position: relative;
         margin-bottom: 24px; 
-        border-radius: 8px; 
+        border-radius: 4px; 
         overflow: hidden; 
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
         background: white;
@@ -673,11 +702,13 @@ export default function PdfViewerPanel({ paper }) {
 
             <div
               ref={containerRef}
-              className={`pdf-reader-selection flex-1 h-full overflow-y-auto p-8 custom-scrollbar ${highlightMode ? "cursor-text" : ""}`}
+              className={`pdf-container pdf-reader-selection flex-1 h-full overflow-y-auto p-8 custom-scrollbar ${highlightMode ? "cursor-text" : ""}`}
               onMouseUp={handleMouseUp}
             >
               <Document
                 file={pdfUrl}
+                cMapUrl={cMapUrl}
+                standardFontDataUrl={standardFontDataUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
                 onLoadError={onDocumentLoadError}
                 loading={
@@ -696,8 +727,9 @@ export default function PdfViewerPanel({ paper }) {
                     <Page
                       pageNumber={index + 1}
                       scale={scale}
+                      width={containerWidth ? Math.min(containerWidth - 32, 800) : undefined}
                       renderTextLayer={true}
-                      renderAnnotationLayer={false}
+                      renderAnnotationLayer={true}
                       className="shadow-xl"
                     />
 

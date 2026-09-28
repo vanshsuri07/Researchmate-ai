@@ -27,7 +27,7 @@ const AnnotationSidebar = ({
 
   if (!isOpen) return null;
 
-  const notesList = highlights?.filter((h) => h.note?.trim().length > 0) || [];
+  const notesList = highlights || [];
 
   const filteredNotes = notesList.filter((h) => {
     const query = searchQuery.toLowerCase();
@@ -101,7 +101,7 @@ const AnnotationSidebar = ({
             }`}
           >
             <StickyNote className="w-3 h-3" />
-            Notes ({notesList.length})
+            Highlights ({notesList.length})
           </button>
           <button
             onClick={() => onTabChange('bookmarks')}
@@ -137,8 +137,8 @@ const AnnotationSidebar = ({
           <>
             {filteredNotes.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-xs text-[#e5e1e4] font-medium mb-1">No notes yet</p>
-                <p className="text-[11px] text-[#908fa0]">Select text and click the pen icon to add notes.</p>
+                <p className="text-xs text-[#e5e1e4] font-medium mb-1">No highlights yet</p>
+                <p className="text-[11px] text-[#908fa0]">Select text to add highlights or notes.</p>
               </div>
             ) : (
               filteredNotes.map((h) => (

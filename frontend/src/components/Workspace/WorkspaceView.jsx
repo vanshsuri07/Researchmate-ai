@@ -31,8 +31,70 @@ export default function WorkspaceView({
 }) {
   const [insightsExpanded, setInsightsExpanded] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [isReading, setIsReading] = useState(false);
+  const isReadingRef = React.useRef(false);
   const documentId = paper?.document_id || paper?.id;
   const pdfUrl = documentId ? `${API_BASE}/documents/${documentId}/pdf` : "";
+
+  const handleToggleRead = async () => {
+    if (isReading) {
+      window.speechSynthesis.cancel();
+      setIsReading(false);
+      isReadingRef.current = false;
+      showActionMessage("Stopped reading.");
+      return;
+    }
+
+    if (!documentId) return;
+
+    showActionMessage("Preparing to read...");
+    try {
+      const res = await fetch(`${API_BASE}/documents/${documentId}/content`);
+      const data = await res.json();
+      
+      if (!data.chunks || data.chunks.length === 0) {
+         showActionMessage("No text found.");
+         return;
+      }
+      
+      window.speechSynthesis.cancel();
+      let currentIndex = 0;
+      
+      const speakNextChunk = () => {
+         if (!isReadingRef.current) return;
+         if (currentIndex >= data.chunks.length) {
+            setIsReading(false);
+            isReadingRef.current = false;
+            showActionMessage("Finished reading.");
+            return;
+         }
+         
+         const utterance = new SpeechSynthesisUtterance(data.chunks[currentIndex]);
+         utterance.rate = 1.0; 
+         
+         utterance.onend = () => {
+             currentIndex++;
+             speakNextChunk();
+         };
+         
+         utterance.onerror = (e) => {
+             console.error("TTS Error", e);
+             setIsReading(false);
+             isReadingRef.current = false;
+         };
+         
+         window.speechSynthesis.speak(utterance);
+      };
+      
+      setIsReading(true);
+      isReadingRef.current = true;
+      speakNextChunk();
+      showActionMessage("Reading started...");
+
+    } catch (e) {
+      showActionMessage("Failed to load text.");
+    }
+  };
 
   const showActionMessage = (message) => {
     setActionMessage(message);
@@ -132,10 +194,17 @@ export default function WorkspaceView({
           </button>
           <div className="h-4 w-px bg-[#353437]" />
 
-          {/* Start */}
-          <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-linear-to-r from-[#8083ff] to-[#6c6fff] hover:opacity-90 text-white text-[11px] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(128,131,255,0.3)]">
-            <Play className="w-3 h-3 fill-white" />
-            Start
+          {/* Start/Stop Reading */}
+          <button
+            onClick={handleToggleRead}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-linear-to-r from-[#8083ff] to-[#6c6fff] hover:opacity-90 text-white text-[11px] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(128,131,255,0.3)]"
+          >
+            {isReading ? (
+              <span className="w-2.5 h-2.5 bg-white rounded-sm" />
+            ) : (
+              <Play className="w-3 h-3 fill-white" />
+            )}
+            {isReading ? "Stop" : "Start"}
           </button>
           {actionMessage && (
             <span className="text-[10px] text-[#7bd0ff] whitespace-nowrap">

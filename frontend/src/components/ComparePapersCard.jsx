@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   FilePlus2,
   FileText,
@@ -23,6 +24,8 @@ export default function ComparePapersCard({
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [comparisonResult, setComparisonResult] = useState(null);
+  const [compareError, setCompareError] = useState(null);
 
   const fileInputRefA = useRef(null);
   const fileInputRefB = useRef(null);
@@ -97,8 +100,7 @@ export default function ComparePapersCard({
     }
   };
 
-  // Trigger comparison UI
-  const handleCompare = () => {
+  const handleCompare = async () => {
     if (!paperA && !paperB) {
       showToast("Please select Paper A and Paper B to compare.");
       return;
@@ -111,12 +113,34 @@ export default function ComparePapersCard({
       showToast("Please select Paper B.");
       return;
     }
+    if (!paperA.id || !paperB.id) {
+       showToast("Please select papers from the indexed library dropdown instead of uploading raw files.");
+       return;
+    }
 
     setIsComparing(true);
-    setTimeout(() => {
-      setIsComparing(false);
+    setCompareError(null);
+    try {
+      const res = await fetch("http://localhost:5000/api/compare", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+             document_a_id: paperA.id || paperA.document_id,
+             document_b_id: paperB.id || paperB.document_id,
+             model: "auto"
+         })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Comparison failed");
+      
+      setComparisonResult(data.comparison);
       setShowComparisonModal(true);
-    }, 600);
+    } catch(err) {
+      setCompareError(err.message);
+      showToast("Failed to compare: " + err.message);
+    } finally {
+      setIsComparing(false);
+    }
   };
 
   // Sample quick load for testing UI
@@ -136,21 +160,8 @@ export default function ComparePapersCard({
 
   // Copy comparison markdown
   const handleCopyMarkdown = () => {
-    const text = `# Comparative Analysis: ${paperA?.title || paperA?.name || "Paper A"} vs ${paperB?.title || paperB?.name || "Paper B"}
-
-## 1. Focus & Problem Formulation
-- **${paperA?.name || "Paper A"}**: Sequence transduction models based entirely on multi-head self-attention mechanisms without recurrence or convolution.
-- **${paperB?.name || "Paper B"}**: Pre-training deep bidirectional representations from unlabeled text by jointly conditioning on left and right context.
-
-## 2. Architecture & Methodology
-- **${paperA?.name || "Paper A"}**: Encoder-decoder Transformer with scaled dot-product attention and positional encoding.
-- **${paperB?.name || "Paper B"}**: Masked Language Modeling (MLM) and Next Sentence Prediction (NSP) with Transformer encoder stacks.
-
-## 3. Key Findings & Strengths
-- **${paperA?.name || "Paper A"}**: Superior translation quality with significantly higher parallelizability and faster training time.
-- **${paperB?.name || "Paper B"}**: State-of-the-art results across 11 NLP tasks including GLUE, MultiNLI, and SQuAD with single-model fine-tuning.
-`;
-    navigator.clipboard.writeText(text);
+    if (!comparisonResult) return;
+    navigator.clipboard.writeText(comparisonResult);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     showToast("Comparison copied to clipboard.");
@@ -260,11 +271,25 @@ export default function ComparePapersCard({
                 </span>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-2">
+              <div className="flex flex-col items-center justify-center gap-2 w-full">
                 <FilePlus2 className="w-5 h-5 text-[#c7c4d7]" />
                 <span className="text-xs sm:text-sm font-medium text-[#e5e1e4]">
                   Paper A
                 </span>
+                <select
+                  className="mt-2 w-full max-w-[200px] bg-[#141316] border border-[#353437] rounded px-2 py-1.5 text-xs text-[#e5e1e4] focus:outline-none"
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    const selected = indexedPapers.find(p => p.id === e.target.value);
+                    if (selected) setPaperA(selected);
+                  }}
+                  value=""
+                >
+                  <option value="">Select Indexed Paper...</option>
+                  {indexedPapers.map(p => (
+                    <option key={p.id} value={p.id}>{p.title || p.fileName}</option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -320,11 +345,25 @@ export default function ComparePapersCard({
                 </span>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-2">
+              <div className="flex flex-col items-center justify-center gap-2 w-full">
                 <FilePlus2 className="w-5 h-5 text-[#c7c4d7]" />
                 <span className="text-xs sm:text-sm font-medium text-[#e5e1e4]">
                   Paper B
                 </span>
+                <select
+                  className="mt-2 w-full max-w-[200px] bg-[#141316] border border-[#353437] rounded px-2 py-1.5 text-xs text-[#e5e1e4] focus:outline-none"
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    const selected = indexedPapers.find(p => p.id === e.target.value);
+                    if (selected) setPaperB(selected);
+                  }}
+                  value=""
+                >
+                  <option value="">Select Indexed Paper...</option>
+                  {indexedPapers.map(p => (
+                    <option key={p.id} value={p.id}>{p.title || p.fileName}</option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -408,7 +447,7 @@ export default function ComparePapersCard({
                       Paper A
                     </span>
                     <span className="text-[11px] text-[#908fa0] font-mono">
-                      {paperA?.size || "PDF"}
+                      {paperA?.size || "Indexed"}
                     </span>
                   </div>
                   <h4 className="text-sm sm:text-base font-bold text-[#e5e1e4]">
@@ -422,7 +461,7 @@ export default function ComparePapersCard({
                       Paper B
                     </span>
                     <span className="text-[11px] text-[#908fa0] font-mono">
-                      {paperB?.size || "PDF"}
+                      {paperB?.size || "Indexed"}
                     </span>
                   </div>
                   <h4 className="text-sm sm:text-base font-bold text-[#e5e1e4]">
@@ -431,69 +470,17 @@ export default function ComparePapersCard({
                 </div>
               </div>
 
-              {/* Comparison Dimension 1: Objective & Scope */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#7bd0ff] uppercase tracking-wider font-mono">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>1. Core Problem & Research Objective</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Aims to replace recurrent and convolutional neural networks with pure self-attention mechanisms to achieve superior parallel computation during training.
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Designed to pre-train deep bidirectional representations by jointly conditioning on left and right context across all layers using masked tokens.
-                  </div>
-                </div>
-              </div>
-
-              {/* Comparison Dimension 2: Architecture & Methodology */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#8083ff] uppercase tracking-wider font-mono">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>2. Methodology & Architecture</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Encoder-decoder configuration with Multi-Head Self-Attention, feed-forward layers, residual connections, and sinusoidal positional embeddings.
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Multi-layer bidirectional Transformer encoder trained on two unsupervised tasks: Masked LM (MLM) and Next Sentence Prediction (NSP).
-                  </div>
-                </div>
-              </div>
-
-              {/* Comparison Dimension 3: Key Strengths & Contributions */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider font-mono">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>3. Key Strengths & Novel Contributions</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Drastic reduction in training wall-clock time; captures long-range dependencies without vanishing gradient limitations inherent to LSTMs/GRUs.
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Eliminates the need for task-specific architectures; fine-tunes with a single extra output layer to advance state-of-the-art across 11 NLP benchmarks.
-                  </div>
-                </div>
-              </div>
-
-              {/* Comparison Dimension 4: Limitations & Tradeoffs */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider font-mono">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>4. Limitations & Identified Tradeoffs</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Quadratic computational complexity \(O(N^2)\) relative to sequence length; heavy memory consumption on very long context windows.
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#19181b] border border-[#353437]/50 text-xs sm:text-sm text-[#c7c4d7] leading-relaxed">
-                    Significant pre-training compute requirements; the [MASK] token mismatch during fine-tuning creates minor pre-train/fine-tune divergence.
-                  </div>
-                </div>
-              </div>
+              {compareError ? (
+                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                   {compareError}
+                 </div>
+              ) : comparisonResult ? (
+                 <div className="markdown-content prose prose-invert max-w-none text-sm text-[#c7c4d7]">
+                   <ReactMarkdown>{comparisonResult}</ReactMarkdown>
+                 </div>
+              ) : (
+                 <div className="text-center text-[#908fa0] py-10">No comparison generated.</div>
+              )}
             </div>
 
             {/* Modal Footer */}

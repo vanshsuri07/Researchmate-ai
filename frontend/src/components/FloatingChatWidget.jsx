@@ -305,9 +305,72 @@ export default function FloatingChatWidget({
       let sourceChunks = undefined;
 
       const activeDocId = paper?.document_id || paper?.id;
-      if (!activeDocId) {
+
+      // Extract and resolve all @mentioned papers across availablePapers and mentionedPapers
+      const allCandidatePapers = [...(availablePapers || [])];
+      if (paper && !allCandidatePapers.some((p) => (p.document_id || p.id) === activeDocId)) {
+        allCandidatePapers.push(paper);
+      }
+      if (mentionedPapers && mentionedPapers.length > 0) {
+        mentionedPapers.forEach((mp) => {
+          if (!allCandidatePapers.some((p) => (p.document_id || p.id) === (mp.document_id || mp.id))) {
+            allCandidatePapers.push(mp);
+          }
+        });
+      }
+
+      const matchedDocIds = [];
+      const lowerUserText = userText.toLowerCase();
+
+      // Check full title / filename matches
+      allCandidatePapers.forEach((p) => {
+        const id = p.document_id || p.id;
+        const title = (p.title || "").toLowerCase();
+        const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+        const baseName = fileName.replace(/\.pdf$/i, "").toLowerCase();
+
+        if (
+          (title && lowerUserText.includes(`@${title}`)) ||
+          (fileName && lowerUserText.includes(`@${fileName}`)) ||
+          (baseName && lowerUserText.includes(`@${baseName}`)) ||
+          (id && lowerUserText.includes(`@${id.toLowerCase()}`))
+        ) {
+          if (id && !matchedDocIds.includes(id)) {
+            matchedDocIds.push(id);
+          }
+        }
+      });
+
+      // Also check individual @tokens
+      const mentionTokens = userText.match(/@([^\s,]+)/g) || [];
+      mentionTokens.forEach((token) => {
+        const query = token.slice(1).toLowerCase().replace(/^["']|["']$/g, "");
+        if (query.length > 1) {
+          allCandidatePapers.forEach((p) => {
+            const id = p.document_id || p.id;
+            const title = (p.title || "").toLowerCase();
+            const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+            if (
+              title.includes(query) ||
+              fileName.includes(query) ||
+              query.includes(fileName) ||
+              query.includes(title)
+            ) {
+              if (id && !matchedDocIds.includes(id)) {
+                matchedDocIds.push(id);
+              }
+            }
+          });
+        }
+      });
+
+      // Target document IDs: If user specifically mentioned paper(s), use ONLY those! Otherwise fallback to active document.
+      const docIds = matchedDocIds.length > 0 ? matchedDocIds : (activeDocId ? [activeDocId] : []);
+      const primaryDocId = docIds[0] || activeDocId;
+
+      if (!primaryDocId) {
         throw new Error(
-          "No active document context. Please select a paper first.",
+          "No document context found. Please select a paper or @mention an indexed paper.",
         );
       }
 
@@ -329,7 +392,7 @@ export default function FloatingChatWidget({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              document_id: activeDocId,
+              document_id: primaryDocId,
               skill_id: matchedSkill.id,
               model: selectedModel,
               custom_query: customQuery,
@@ -356,7 +419,7 @@ export default function FloatingChatWidget({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                document_id: activeDocId,
+                document_id: primaryDocId,
                 model: selectedModel,
               }),
             });
@@ -368,16 +431,6 @@ export default function FloatingChatWidget({
                 ? JSON.stringify(val, null, 2)
                 : String(val);
           } else {
-            // Find which mentioned papers are in the user text
-            const actualMentions = mentionedPapers.filter((p) =>
-              userText.includes(`@${p.title || p.fileName}`),
-            );
-            const docIds = [activeDocId];
-            actualMentions.forEach((p) => {
-              const id = p.document_id || p.id;
-              if (!docIds.includes(id)) docIds.push(id);
-            });
-
             // Gather notes for these docs
             let notes = [];
             docIds.forEach((id) => {
@@ -401,7 +454,6 @@ export default function FloatingChatWidget({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                document_id: activeDocId,
                 document_ids: docIds,
                 notes: notes,
                 question: userText,
@@ -416,11 +468,31 @@ export default function FloatingChatWidget({
           }
         }
       } else {
+        // Gather notes for these docs
+        let notes = [];
+        docIds.forEach((id) => {
+          try {
+            const storedHighlights =
+              JSON.parse(localStorage.getItem(`highlights_${id}`)) || [];
+            const storedBookmarks =
+              JSON.parse(localStorage.getItem(`bookmarks_${id}`)) || [];
+            storedHighlights.forEach((h) => {
+              if (h.note)
+                notes.push(`Note on "${h.selectedText}": ${h.note}`);
+              else notes.push(`Highlight: "${h.selectedText}"`);
+            });
+            storedBookmarks.forEach((b) => {
+              notes.push(`Bookmark: ${b.label}`);
+            });
+          } catch {}
+        });
+
         const res = await fetch(`${API_BASE}/ask`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            document_id: activeDocId,
+            document_ids: docIds,
+            notes: notes,
             question: userText,
             model: selectedModel,
           }),
