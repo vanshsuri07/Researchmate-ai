@@ -13,6 +13,9 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+
 export default function ComparePapersCard({
   indexedPapers = [],
   showToast = () => {},
@@ -124,7 +127,7 @@ export default function ComparePapersCard({
     setIsComparing(true);
     setCompareError(null);
     try {
-      const res = await fetch("http://localhost:5000/api/compare", {
+      const res = await fetch(`${API_BASE}/compare`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -388,7 +391,8 @@ export default function ComparePapersCard({
                     </span>
                   </div>
                   <p className="text-xs text-[#908fa0] mt-0.5">
-                    Multi-dimensional comparative analysis powered by FAISS Vector RAG
+                    Multi-dimensional comparative analysis powered by FAISS
+                    Vector RAG
                   </p>
                 </div>
               </div>
