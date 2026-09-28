@@ -107,7 +107,7 @@ def _load_stored_documents():
 
 
 # Load any previously saved documents upon startup
-_load_stored_documents()
+# _load_stored_documents()
 
 
 @app.route("/api/documents", methods=["GET"])
