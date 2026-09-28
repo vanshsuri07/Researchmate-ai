@@ -247,13 +247,48 @@ def _get_document_or_404(doc_id):
     return doc
 
 
+@app.route("/api/compare", methods=["POST"])
+def compare_papers():
+    data = request.get_json(force=True)
+    doc_a_id = data.get("document_a_id")
+    doc_b_id = data.get("document_b_id")
+    model = data.get("model", "auto")
+
+    doc_a = _get_document_or_404(doc_a_id)
+    doc_b = _get_document_or_404(doc_b_id)
+    if not doc_a or not doc_b:
+        return jsonify({"error": "One or both documents not found."}), 404
+
+    system_prompt = "You are an expert AI research assistant. Your task is to compare two research papers and generate a comprehensive side-by-side analysis."
+    user_prompt = f"""Compare the following two research papers based on their text samples.
+
+Paper A (Filename: {doc_a['filename']}):
+{doc_a['sample']}
+
+Paper B (Filename: {doc_b['filename']}):
+{doc_b['sample']}
+
+Generate a side-by-side analysis strictly covering:
+- Problem focus
+- Architecture and methodology
+- Key findings
+- Strengths and differences
+
+Format the output cleanly in Markdown."""
+
+    try:
+        response = llm_engine._ask_litellm(system_prompt, user_prompt, model)
+        return jsonify({"comparison": response})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/ask", methods=["POST"])
 def ask_question():
     data = request.get_json(force=True)
     # Support multiple document IDs for cross-document query
     doc_ids = data.get("document_ids", [])
-    if "document_id" in data and data["document_id"] not in doc_ids:
-        doc_ids.append(data["document_id"])
+    if not doc_ids and "document_id" in data and data["document_id"]:
+        doc_ids = [data["document_id"]]
         
     question = data.get("question", "").strip()
     notes = data.get("notes", [])
@@ -274,7 +309,11 @@ def ask_question():
         # Append paper title to chunks for context
         for r in doc_results:
             r["document_id"] = d_id
-            r["paper_title"] = doc["metadata"]["title"] if doc["metadata"] else d_id
+            r["paper_title"] = (
+                doc.get("title")
+                or doc.get("filename")
+                or d_id
+            )
             # Prefix text with paper title so LLM knows where it came from
             r["text_for_llm"] = f"[From Paper: {r['paper_title']}]\n{r['text']}"
             results.append(r)
@@ -606,3 +645,4 @@ def health():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+

@@ -1,5 +1,13 @@
-import React from 'react';
-import { FileText, MessageSquare, Sparkles, Trash2, ArrowUpRight, Clock, Layers } from 'lucide-react';
+import React from "react";
+import {
+  FileText,
+  MessageSquare,
+  Sparkles,
+  Trash2,
+  ArrowUpRight,
+  Clock,
+  Layers,
+} from "lucide-react";
 
 export default function RecentPapersList({
   papers,
@@ -17,7 +25,8 @@ export default function RecentPapersList({
             Indexed Manuscripts ({papers.length})
           </h3>
           <p className="text-xs text-[#908fa0] mt-0.5">
-            Active papers loaded in memory ready for synthesis and question answering
+            Active papers loaded in memory ready for synthesis and question
+            answering
           </p>
         </div>
 
@@ -38,9 +47,13 @@ export default function RecentPapersList({
           <div className="w-12 h-12 rounded-2xl bg-[#201f21] flex items-center justify-center text-[#908fa0] mb-3 border border-[#353437]">
             <FileText className="w-6 h-6" />
           </div>
-          <h4 className="text-sm font-semibold text-[#e5e1e4]">No manuscripts indexed yet</h4>
+          <h4 className="text-sm font-semibold text-[#e5e1e4]">
+            No manuscripts indexed yet
+          </h4>
           <p className="text-xs text-[#908fa0] max-w-sm mt-1 mb-4">
-            Upload your first research paper PDF using the dropzone above to extract citations, generate summaries, and interact with the AI assistant.
+            Upload your first research paper PDF using the dropzone above to
+            extract citations, generate summaries, and interact with the AI
+            assistant.
           </p>
         </div>
       ) : (
@@ -66,7 +79,7 @@ export default function RecentPapersList({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[#908fa0]">
-                    <span className="truncate max-w-[200px]">{paper.fileName}</span>
+                    <span className="truncate max-w-50">{paper.fileName}</span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       <Layers className="w-3 h-3 text-[#7bd0ff]" />
@@ -75,7 +88,7 @@ export default function RecentPapersList({
                     <span>•</span>
                     <span className="flex items-center gap-1 font-mono">
                       <Clock className="w-3 h-3" />
-                      {paper.uploadedAt || 'Just now'}
+                      {paper.uploadedAt || "Just now"}
                     </span>
                     <span>•</span>
                     <span>{paper.fileSize}</span>
@@ -90,7 +103,7 @@ export default function RecentPapersList({
                   className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#2a2a2c] hover:bg-[#8083ff]/20 hover:text-[#c0c1ff] border border-[#464554]/50 text-xs font-medium text-[#e5e1e4] transition-colors cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#8083ff]" />
-                  <span>Insights</span>
+                  <span>Analysis</span>
                 </button>
 
                 <button

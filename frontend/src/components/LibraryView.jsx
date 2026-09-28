@@ -29,6 +29,13 @@ import {
   RefreshCw,
   Loader2,
 } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 /* ─────────────────────────────────────────────
    Helpers
@@ -145,22 +152,48 @@ function ActivityIndicators({ paper }) {
 ───────────────────────────────────────────── */
 function PdfThumbnail({ paper, onClick, size = "md" }) {
   const dim = size === "sm" ? "w-12 h-16" : "w-full h-32";
+  const [loadError, setLoadError] = useState(false);
   const colors = [
     "from-[#8083ff]/20 to-[#7bd0ff]/10",
     "from-violet-500/20 to-purple-500/10",
     "from-indigo-500/20 to-blue-500/10",
     "from-[#8083ff]/30 to-fuchsia-500/10",
   ];
-  const colorIdx = paper.id ? paper.id.charCodeAt(0) % colors.length : 0;
+  const colorIdx = paper?.id ? paper.id.charCodeAt(0) % colors.length : 0;
+  const docId = paper?.id || paper?.document_id;
+  const pdfUrl = docId ? `http://localhost:5000/api/documents/${docId}/pdf` : null;
 
   return (
     <button
       onClick={onClick}
-      className={`${dim} rounded-lg bg-gradient-to-br ${colors[colorIdx]} border border-[#353437]/60 flex items-center justify-center shrink-0 overflow-hidden group/thumb hover:border-[#8083ff]/50 transition-all cursor-pointer relative`}
+      className={`${dim} rounded-lg bg-gradient-to-br ${colors[colorIdx]} border border-[#353437]/60 flex items-center justify-center shrink-0 overflow-hidden group/thumb hover:border-[#8083ff]/50 transition-all cursor-pointer relative bg-[#131315]`}
       title="Quick preview"
     >
-      <FileText className="w-6 h-6 text-[#8083ff]/60 group-hover/thumb:text-[#8083ff] transition-colors" />
-      <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 flex items-center justify-center transition-all opacity-0 group-hover/thumb:opacity-100">
+      {pdfUrl && !loadError ? (
+        <div className="w-full h-full flex items-center justify-center overflow-hidden pointer-events-none relative">
+          <Document
+            file={pdfUrl}
+            onLoadError={() => setLoadError(true)}
+            loading={
+              <div className="flex items-center justify-center w-full h-full">
+                <FileText className="w-6 h-6 text-[#8083ff]/40 animate-pulse" />
+              </div>
+            }
+            className="flex items-center justify-center w-full h-full"
+          >
+            <Page
+              pageNumber={1}
+              width={size === "sm" ? 48 : 280}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              className="object-cover shadow-sm opacity-90 group-hover/thumb:opacity-100 group-hover/thumb:scale-105 transition-all duration-300"
+            />
+          </Document>
+        </div>
+      ) : (
+        <FileText className="w-6 h-6 text-[#8083ff]/60 group-hover/thumb:text-[#8083ff] transition-colors" />
+      )}
+      <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 flex items-center justify-center transition-all opacity-0 group-hover/thumb:opacity-100 z-10">
         <Eye className="w-3.5 h-3.5 text-white drop-shadow" />
       </div>
     </button>
@@ -174,6 +207,8 @@ function QuickPreview({ paper, onOpenInsights, onOpenChat, onClose }) {
   if (!paper) return null;
   const pages =
     paper.numPages ?? Math.max(8, Math.floor((paper.numChunks || 5) * 3.2));
+  const docId = paper?.id || paper?.document_id;
+  const pdfUrl = docId ? `http://localhost:5000/api/documents/${docId}/pdf` : null;
 
   return (
     <div
@@ -195,8 +230,24 @@ function QuickPreview({ paper, onOpenInsights, onOpenChat, onClose }) {
 
         {/* Header */}
         <div className="flex gap-3 items-start pr-6">
-          <div className="w-12 h-16 rounded-lg bg-gradient-to-br from-[#8083ff]/20 to-[#7bd0ff]/10 border border-[#353437]/60 flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6 text-[#8083ff]/80" />
+          <div className="w-14 h-18 rounded-lg bg-[#131315] border border-[#353437]/60 flex items-center justify-center shrink-0 overflow-hidden relative">
+            {pdfUrl ? (
+              <Document
+                file={pdfUrl}
+                loading={<FileText className="w-6 h-6 text-[#8083ff]/80" />}
+                error={<FileText className="w-6 h-6 text-[#8083ff]/80" />}
+                className="w-full h-full flex items-center justify-center"
+              >
+                <Page
+                  pageNumber={1}
+                  width={56}
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                />
+              </Document>
+            ) : (
+              <FileText className="w-6 h-6 text-[#8083ff]/80" />
+            )}
           </div>
           <div className="flex flex-col gap-1 min-w-0">
             <h3 className="text-sm font-bold text-[#e5e1e4] line-clamp-2 leading-tight">
@@ -263,7 +314,7 @@ function QuickPreview({ paper, onOpenInsights, onOpenChat, onClose }) {
             }}
             className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#1c1b1d] hover:bg-[#2a2a2c] border border-[#353437] text-xs font-semibold text-[#e5e1e4] hover:text-[#c0c1ff] transition-all cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#8083ff]" /> Insights
+            <Sparkles className="w-3.5 h-3.5 text-[#8083ff]" /> Analysis
           </button>
           <button
             onClick={() => {
@@ -437,7 +488,7 @@ function GridCard({
             className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#1c1b1d] hover:bg-[#2a2a2c] border border-[#353437] text-xs font-semibold text-[#e5e1e4] hover:text-[#c0c1ff] transition-all cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#8083ff]" />
-            Insights
+            Analysis
           </button>
           <button
             onClick={() => onOpenChat(paper)}
@@ -576,7 +627,7 @@ function ListRow({
           onClick={() => onOpenInsights(paper)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2a2a2c] hover:bg-[#8083ff]/20 hover:text-[#c0c1ff] border border-[#464554]/50 text-xs font-semibold text-[#e5e1e4] transition-all cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5 text-[#8083ff]" /> Insights
+          <Sparkles className="w-3.5 h-3.5 text-[#8083ff]" /> Analysis
         </button>
         <button
           onClick={() => onOpenChat(paper)}

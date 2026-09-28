@@ -245,6 +245,66 @@ export default function ChatPanel({
       let skillUsedName = null;
       let sourcesCount = undefined;
 
+      const activeDocId = paper?.document_id || paper?.id;
+
+      // Extract and resolve all @mentioned papers across availablePapers
+      const allCandidatePapers = [...(availablePapers || [])];
+      if (paper && !allCandidatePapers.some((p) => (p.document_id || p.id) === activeDocId)) {
+        allCandidatePapers.push(paper);
+      }
+
+      const matchedDocIds = [];
+      const lowerUserText = userText.toLowerCase();
+
+      allCandidatePapers.forEach((p) => {
+        const id = p.document_id || p.id;
+        const title = (p.title || "").toLowerCase();
+        const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+        const baseName = fileName.replace(/\.pdf$/i, "").toLowerCase();
+
+        if (
+          (title && lowerUserText.includes(`@${title}`)) ||
+          (fileName && lowerUserText.includes(`@${fileName}`)) ||
+          (baseName && lowerUserText.includes(`@${baseName}`)) ||
+          (id && lowerUserText.includes(`@${id.toLowerCase()}`))
+        ) {
+          if (id && !matchedDocIds.includes(id)) {
+            matchedDocIds.push(id);
+          }
+        }
+      });
+
+      const mentionTokens = userText.match(/@([^\s,]+)/g) || [];
+      mentionTokens.forEach((token) => {
+        const query = token.slice(1).toLowerCase().replace(/^["']|["']$/g, "");
+        if (query.length > 1) {
+          allCandidatePapers.forEach((p) => {
+            const id = p.document_id || p.id;
+            const title = (p.title || "").toLowerCase();
+            const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+            if (
+              title.includes(query) ||
+              fileName.includes(query) ||
+              query.includes(fileName) ||
+              query.includes(title)
+            ) {
+              if (id && !matchedDocIds.includes(id)) {
+                matchedDocIds.push(id);
+              }
+            }
+          });
+        }
+      });
+
+      const docIds = matchedDocIds.length > 0 ? matchedDocIds : (activeDocId ? [activeDocId] : []);
+      const primaryDocId = docIds[0] || activeDocId;
+
+      if (!primaryDocId) {
+        throw new Error(
+          "No document context found. Please select a paper or @mention an indexed paper.",
+        );
+      }
+
       if (userText.startsWith("/")) {
         const slashMatch = userText.match(/^\/([a-zA-Z0-9_-]+)(?:\s+(.*))?$/s);
         const invokedCmd = slashMatch ? slashMatch[1].toLowerCase() : "";
@@ -263,7 +323,7 @@ export default function ChatPanel({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              document_id: paper.document_id,
+              document_id: primaryDocId,
               skill_id: matchedSkill.id,
               model: selectedModel,
               custom_query: customQuery,
@@ -290,7 +350,7 @@ export default function ChatPanel({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                document_id: paper.document_id,
+                document_id: primaryDocId,
                 model: selectedModel,
               }),
             });
@@ -306,7 +366,7 @@ export default function ChatPanel({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                document_id: paper.document_id,
+                document_ids: docIds,
                 question: userText,
                 model: selectedModel,
               }),
@@ -322,7 +382,7 @@ export default function ChatPanel({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            document_id: paper.document_id,
+            document_ids: docIds,
             question: userText,
             model: selectedModel,
           }),
