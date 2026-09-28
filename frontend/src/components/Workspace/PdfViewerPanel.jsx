@@ -26,7 +26,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const cMapUrl = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`;
 const standardFontDataUrl = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`;
 const HIGHLIGHT_COLORS = {
@@ -478,13 +479,15 @@ export default function PdfViewerPanel({ paper }) {
       .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
 
     if (chunkHighlights.length === 0)
-      return <span className="whitespace-pre-wrap leading-relaxed">{text}</span>;
+      return (
+        <span className="whitespace-pre-wrap leading-relaxed">{text}</span>
+      );
 
-    // We don't have accurate offsets anymore since we wiped them, 
+    // We don't have accurate offsets anymore since we wiped them,
     // so we'll just use string replacement for the first occurrence.
     let elements = [];
     let lastIndex = 0;
-    
+
     // Quick fallback highlight string matching
     let currentText = text;
     let indexOffset = 0;
@@ -493,7 +496,7 @@ export default function PdfViewerPanel({ paper }) {
       if (!h.selectedText) return;
       const snippet = h.selectedText.trim();
       if (!snippet) return;
-      
+
       const idx = currentText.indexOf(snippet, lastIndex - indexOffset);
       if (idx >= 0) {
         elements.push(currentText.substring(lastIndex - indexOffset, idx));
@@ -513,7 +516,7 @@ export default function PdfViewerPanel({ paper }) {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 border border-[#131315]"></span>
               </span>
             )}
-          </span>
+          </span>,
         );
         lastIndex = idx + snippet.length + indexOffset;
       }
@@ -523,8 +526,13 @@ export default function PdfViewerPanel({ paper }) {
       elements.push(currentText.substring(lastIndex - indexOffset));
     }
 
-    if (elements.length === 0) return <span className="whitespace-pre-wrap leading-relaxed">{text}</span>;
-    return <span className="whitespace-pre-wrap leading-relaxed">{elements}</span>;
+    if (elements.length === 0)
+      return (
+        <span className="whitespace-pre-wrap leading-relaxed">{text}</span>
+      );
+    return (
+      <span className="whitespace-pre-wrap leading-relaxed">{elements}</span>
+    );
   };
 
   return (
@@ -613,19 +621,21 @@ export default function PdfViewerPanel({ paper }) {
                 setSidebarOpen(false);
               }}
               onDeleteHighlight={(id) =>
-                setHighlights((prev) => prev.filter((h) => h.highlightId !== id))
+                setHighlights((prev) =>
+                  prev.filter((h) => h.highlightId !== id),
+                )
               }
               onDeleteBookmark={(id) =>
                 setBookmarks((prev) => prev.filter((b) => b.bookmarkId !== id))
               }
               onUpdateBookmarkLabel={(id, label) =>
                 setBookmarks((prev) =>
-                  prev.map((b) => (b.bookmarkId === id ? { ...b, label } : b))
+                  prev.map((b) => (b.bookmarkId === id ? { ...b, label } : b)),
                 )
               }
               onClose={() => setSidebarOpen(false)}
             />
-            
+
             <div
               ref={containerRef}
               className={`flex-1 h-full overflow-y-auto p-6 sm:p-8 custom-scrollbar relative ${highlightMode ? "cursor-text" : ""}`}
@@ -668,7 +678,13 @@ export default function PdfViewerPanel({ paper }) {
                 )}
               </div>
             </div>
-            <MiniBookmarkStrip highlights={highlights} bookmarks={bookmarks} totalChunks={contentData?.chunks?.length || 0} onJumpToChunk={scrollToPage} containerRef={containerRef} />
+            <MiniBookmarkStrip
+              highlights={highlights}
+              bookmarks={bookmarks}
+              totalChunks={contentData?.chunks?.length || 0}
+              onJumpToChunk={scrollToPage}
+              containerRef={containerRef}
+            />
           </div>
         ) : (
           <div className="h-full relative flex">
@@ -727,7 +743,11 @@ export default function PdfViewerPanel({ paper }) {
                     <Page
                       pageNumber={index + 1}
                       scale={scale}
-                      width={containerWidth ? Math.min(containerWidth - 32, 800) : undefined}
+                      width={
+                        containerWidth
+                          ? Math.min(containerWidth - 32, 800)
+                          : undefined
+                      }
                       renderTextLayer={true}
                       renderAnnotationLayer={true}
                       className="shadow-xl"

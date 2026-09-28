@@ -22,7 +22,7 @@ export const MODEL_OPTIONS = [
   },
   {
     id: "groq",
-    label: "Llama 3.3 70B",
+    label: "Qwen 3.8 27B",
     badge: "300+ t/s",
     badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
     icon: "🚀",

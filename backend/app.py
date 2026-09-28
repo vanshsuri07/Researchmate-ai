@@ -253,6 +253,7 @@ def compare_papers():
     doc_a_id = data.get("document_a_id")
     doc_b_id = data.get("document_b_id")
     model = data.get("model", "auto")
+    language = data.get("language", "English")
 
     doc_a = _get_document_or_404(doc_a_id)
     doc_b = _get_document_or_404(doc_b_id)
@@ -277,7 +278,7 @@ Generate a side-by-side analysis strictly covering:
 Format the output cleanly in Markdown."""
 
     try:
-        response = llm_engine._ask_litellm(system_prompt, user_prompt, model)
+        response = llm_engine._ask_litellm(system_prompt, user_prompt, model, language=language)
         return jsonify({"comparison": response})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -292,6 +293,7 @@ def ask_question():
         
     question = data.get("question", "").strip()
     notes = data.get("notes", [])
+    language = data.get("language", "English")
 
     if not doc_ids:
         return jsonify({"error": "No documents specified."}), 400
@@ -327,7 +329,7 @@ def ask_question():
 
     relevant_chunks = [r["text_for_llm"] for r in results]
     model = data.get("model", "auto")
-    answer = llm_engine.answer_question(question, relevant_chunks, model=model, notes=notes)
+    answer = llm_engine.answer_question(question, relevant_chunks, model=model, notes=notes, language=language)
 
     source_chunks = []
     for r in results:
@@ -351,9 +353,10 @@ def summarize():
     data = request.get_json(force=True)
     doc = _get_document_or_404(data.get("document_id"))
     model = data.get("model", "auto")
+    language = data.get("language", "English")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"summary": llm_engine.summarize_document(doc["sample"], model=model)})
+    return jsonify({"summary": llm_engine.summarize_document(doc["sample"], model=model, language=language)})
 
 
 @app.route("/api/keywords", methods=["POST"])
@@ -361,9 +364,10 @@ def keywords():
     data = request.get_json(force=True)
     doc = _get_document_or_404(data.get("document_id"))
     model = data.get("model", "auto")
+    language = data.get("language", "English")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"keywords": llm_engine.extract_keywords(doc["sample"], model=model)})
+    return jsonify({"keywords": llm_engine.extract_keywords(doc["sample"], model=model, language=language)})
 
 
 @app.route("/api/citations", methods=["POST"])
@@ -371,9 +375,10 @@ def citations():
     data = request.get_json(force=True)
     doc = _get_document_or_404(data.get("document_id"))
     model = data.get("model", "auto")
+    language = data.get("language", "English")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"citations": llm_engine.analyze_citations(doc["sample"], model=model)})
+    return jsonify({"citations": llm_engine.analyze_citations(doc["sample"], model=model, language=language)})
 
 
 @app.route("/api/research-gaps", methods=["POST"])
@@ -381,9 +386,10 @@ def research_gaps():
     data = request.get_json(force=True)
     doc = _get_document_or_404(data.get("document_id"))
     model = data.get("model", "auto")
+    language = data.get("language", "English")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"research_gaps": llm_engine.identify_research_gaps(doc["sample"], model=model)})
+    return jsonify({"research_gaps": llm_engine.identify_research_gaps(doc["sample"], model=model, language=language)})
 
 
 @app.route("/api/future-work", methods=["POST"])
@@ -391,9 +397,10 @@ def future_work():
     data = request.get_json(force=True)
     doc = _get_document_or_404(data.get("document_id"))
     model = data.get("model", "auto")
+    language = data.get("language", "English")
     if doc is None:
         return jsonify({"error": "Document not found. Upload a PDF first."}), 404
-    return jsonify({"future_work": llm_engine.suggest_future_work(doc["sample"], model=model)})
+    return jsonify({"future_work": llm_engine.suggest_future_work(doc["sample"], model=model, language=language)})
 
 
 @app.route("/api/flashcards", methods=["POST"])

@@ -8,6 +8,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import LanguageSelector from "./LanguageSelector.jsx";
 
 export default function Header({
   activeTab,
@@ -16,6 +17,8 @@ export default function Header({
   setSearchQuery,
   selectedModel,
   setSelectedModel,
+  selectedLanguage,
+  setSelectedLanguage,
   serverStatus,
   onCheckHealth,
 }) {
@@ -93,6 +96,12 @@ export default function Header({
               )}
             </div>
           </div>
+
+          {/* Language Selector */}
+          <LanguageSelector
+            selectedLanguage={selectedLanguage}
+            setSelectedLanguage={setSelectedLanguage}
+          />
 
           {/* Real Server Status Indicator */}
           <button

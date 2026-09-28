@@ -97,7 +97,7 @@ export default function UploadSection({ onFileUpload, isUploading }) {
             FAISS In-Memory Index
           </span>
           <span className="px-3 py-1 rounded-full bg-[#2a2a2c] border border-[#464554]/40 font-mono text-xs text-[#c7c4d7] font-medium">
-            Gemini Flash LLM
+            Multi-LLM Synthesis
           </span>
         </div>
 

@@ -12,13 +12,15 @@ import Modals from "./components/Modals.jsx";
 import WorkspaceView from "./components/Workspace/WorkspaceView.jsx";
 import FloatingChatWidget from "./components/FloatingChatWidget.jsx";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 export default function App() {
   // Navigation & Search State
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState("auto");
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
 
   // Real Uploaded Papers List
   const [papers, setPapers] = useState(() => {
@@ -319,6 +321,8 @@ ${papers
           setSearchQuery={setSearchQuery}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          selectedLanguage={selectedLanguage}
+          setSelectedLanguage={setSelectedLanguage}
           serverStatus={serverStatus}
           onCheckHealth={checkHealth}
         />
@@ -383,6 +387,7 @@ ${papers
                     <ComparePapersCard
                       indexedPapers={papers}
                       showToast={showToast}
+                      selectedLanguage={selectedLanguage}
                     />
 
                     {/* Papers List */}
@@ -458,6 +463,7 @@ ${papers
         onSelectPaper={setActiveWorkspacePaper}
         selectedModel={selectedModel}
         setSelectedModel={setSelectedModel}
+        selectedLanguage={selectedLanguage}
         isPoppedOut={isChatPoppedOut}
         setIsPoppedOut={setIsChatPoppedOut}
         isVisible={isChatVisible}

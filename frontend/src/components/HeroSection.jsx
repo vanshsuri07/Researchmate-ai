@@ -53,7 +53,7 @@ export default function HeroSection({ totalPapers, totalChunks, serverStatus }) 
             <div className="flex items-center gap-1.5">
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-sm sm:text-base text-emerald-400 font-bold tracking-tight">
-                {serverStatus === 'online' ? 'Gemini RAG' : 'Offline'}
+                {serverStatus === 'online' ? 'FAISS Vector RAG' : 'Offline'}
               </span>
             </div>
             <span className="text-[11px] text-[#908fa0] uppercase tracking-wider font-semibold mt-0.5">

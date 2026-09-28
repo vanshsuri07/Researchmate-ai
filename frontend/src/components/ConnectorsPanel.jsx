@@ -12,7 +12,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 // ─── Shared Result Card ──────────────────────────────────────────────────────
 function PaperResultCard({ paper, onImport, importing }) {
@@ -25,7 +26,9 @@ function PaperResultCard({ paper, onImport, importing }) {
           </h4>
           <div className="flex items-center flex-wrap gap-1.5 mt-1.5 text-[11px] text-[#908fa0]">
             {paper.authors?.slice(0, 3).join(", ")}
-            {paper.year && <span className="text-[#8083ff]">• {paper.year}</span>}
+            {paper.year && (
+              <span className="text-[#8083ff]">• {paper.year}</span>
+            )}
             {paper.arxiv_id && (
               <a
                 href={`https://arxiv.org/abs/${paper.arxiv_id}`}
@@ -68,7 +71,8 @@ function SuccessBanner({ record, onDismiss, onViewInLibrary }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold">Imported successfully!</p>
         <p className="text-xs mt-0.5 text-emerald-400 truncate">
-          {record.title} — {record.num_chunks} chunks indexed. Ready in your Library.
+          {record.title} — {record.num_chunks} chunks indexed. Ready in your
+          Library.
         </p>
       </div>
       {onViewInLibrary && (
@@ -79,7 +83,12 @@ function SuccessBanner({ record, onDismiss, onViewInLibrary }) {
           View in Library →
         </button>
       )}
-      <button onClick={onDismiss} className="text-emerald-400 hover:text-white text-xs cursor-pointer">✕</button>
+      <button
+        onClick={onDismiss}
+        className="text-emerald-400 hover:text-white text-xs cursor-pointer"
+      >
+        ✕
+      </button>
     </div>
   );
 }
@@ -171,7 +180,13 @@ function ArxivConnector({ onImportSuccess, onViewInLibrary }) {
 
   return (
     <div className="space-y-5">
-      {success && <SuccessBanner record={success} onDismiss={() => setSuccess(null)} onViewInLibrary={onViewInLibrary} />}
+      {success && (
+        <SuccessBanner
+          record={success}
+          onDismiss={() => setSuccess(null)}
+          onViewInLibrary={onViewInLibrary}
+        />
+      )}
       {warning && <WarningBanner message={warning} />}
       {error && <ErrorBanner message={error} />}
 
@@ -181,7 +196,8 @@ function ArxivConnector({ onImportSuccess, onViewInLibrary }) {
           <FileArchive className="w-4 h-4 text-[#8083ff]" /> Import by arXiv ID
         </h3>
         <p className="text-xs text-[#908fa0] mb-3">
-          Paste an arXiv ID (e.g. <code className="text-[#8083ff]">1706.03762</code>) or full URL.
+          Paste an arXiv ID (e.g.{" "}
+          <code className="text-[#8083ff]">1706.03762</code>) or full URL.
         </p>
         <form onSubmit={handleImportById} className="flex gap-2">
           <input
@@ -212,7 +228,8 @@ function ArxivConnector({ onImportSuccess, onViewInLibrary }) {
           <Search className="w-4 h-4 text-[#7bd0ff]" /> Search arXiv Papers
         </h3>
         <p className="text-xs text-[#908fa0] mb-3">
-          Search by keywords, topic, or author — then click Import on any result.
+          Search by keywords, topic, or author — then click Import on any
+          result.
         </p>
         <form onSubmit={handleSearch} className="flex gap-2 mb-4">
           <input
@@ -227,7 +244,11 @@ function ArxivConnector({ onImportSuccess, onViewInLibrary }) {
             disabled={!query.trim() || searching}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1c1b1d] hover:bg-[#353437] border border-[#353437] text-[#c7c4d7] font-semibold text-sm disabled:opacity-50 cursor-pointer transition-all"
           >
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            {searching ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
             Search
           </button>
         </form>
@@ -289,7 +310,13 @@ function UrlConnector({ onImportSuccess, onViewInLibrary }) {
 
   return (
     <div className="space-y-5">
-      {success && <SuccessBanner record={success} onDismiss={() => setSuccess(null)} onViewInLibrary={onViewInLibrary} />}
+      {success && (
+        <SuccessBanner
+          record={success}
+          onDismiss={() => setSuccess(null)}
+          onViewInLibrary={onViewInLibrary}
+        />
+      )}
       {warning && <WarningBanner message={warning} />}
       {error && <ErrorBanner message={error} />}
 
@@ -316,7 +343,8 @@ function UrlConnector({ onImportSuccess, onViewInLibrary }) {
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Scraping & Indexing...
+                <Loader2 className="w-4 h-4 animate-spin" /> Scraping &
+                Indexing...
               </>
             ) : (
               <>
@@ -329,9 +357,14 @@ function UrlConnector({ onImportSuccess, onViewInLibrary }) {
 
       {/* Tips */}
       <div className="p-4 rounded-xl bg-[#1c1b1d]/40 border border-[#353437]/40">
-        <p className="text-xs font-semibold text-[#908fa0] mb-2 uppercase tracking-wider">Best Results With:</p>
+        <p className="text-xs font-semibold text-[#908fa0] mb-2 uppercase tracking-wider">
+          Best Results With:
+        </p>
         <ul className="space-y-1 text-xs text-[#908fa0]">
-          <li>✅ arXiv abstract pages: <code className="text-[#7bd0ff]">arxiv.org/abs/...</code></li>
+          <li>
+            ✅ arXiv abstract pages:{" "}
+            <code className="text-[#7bd0ff]">arxiv.org/abs/...</code>
+          </li>
           <li>✅ Open access preprints & blog posts</li>
           <li>✅ Wikipedia & Stanford Encyclopedia of Philosophy articles</li>
           <li>❌ Nature, Springer, IEEE (paywalled — will warn)</li>
@@ -396,15 +429,23 @@ function SemanticConnector({ onImportSuccess, onViewInLibrary }) {
 
   return (
     <div className="space-y-5">
-      {success && <SuccessBanner record={success} onDismiss={() => setSuccess(null)} onViewInLibrary={onViewInLibrary} />}
+      {success && (
+        <SuccessBanner
+          record={success}
+          onDismiss={() => setSuccess(null)}
+          onViewInLibrary={onViewInLibrary}
+        />
+      )}
       {error && <ErrorBanner message={error} />}
 
       <div className="p-5 rounded-xl bg-[#1c1b1d]/60 border border-[#353437]/70">
         <h3 className="text-sm font-bold text-[#e5e1e4] mb-1 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-amber-400" /> Search Semantic Scholar
+          <BookOpen className="w-4 h-4 text-amber-400" /> Search Semantic
+          Scholar
         </h3>
         <p className="text-xs text-[#908fa0] mb-3">
-          Search 200M+ academic papers. Import any result — its abstract will be indexed immediately.
+          Search 200M+ academic papers. Import any result — its abstract will be
+          indexed immediately.
         </p>
         <form onSubmit={handleSearch} className="flex gap-2 mb-4">
           <input
@@ -419,7 +460,11 @@ function SemanticConnector({ onImportSuccess, onViewInLibrary }) {
             disabled={!query.trim() || searching}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-semibold text-sm disabled:opacity-50 cursor-pointer transition-all"
           >
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            {searching ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
             Search
           </button>
         </form>
@@ -448,7 +493,12 @@ export default function ConnectorsPanel({ onImportSuccess, onViewInLibrary }) {
   const connectors = [
     { id: "arxiv", label: "arXiv", icon: "🔬", color: "text-[#c0c1ff]" },
     { id: "url", label: "Web URL", icon: "🌐", color: "text-emerald-400" },
-    { id: "semantic", label: "Semantic Scholar", icon: "📚", color: "text-amber-400" },
+    {
+      id: "semantic",
+      label: "Semantic Scholar",
+      icon: "📚",
+      color: "text-amber-400",
+    },
   ];
 
   return (

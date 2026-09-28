@@ -22,16 +22,59 @@ import {
 } from "lucide-react";
 import ModelSelector, { MODEL_OPTIONS } from "./ModelSelector.jsx";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const BUILT_IN_COMMANDS = [
-  { id: "summary", command: "summary", name: "Executive Summary", desc: "Concise 150-200 word academic summary", icon: "📋" },
-  { id: "gaps", command: "gaps", name: "Research Gaps", desc: "Identify unresolved problems & limitations", icon: "🔍" },
-  { id: "future", command: "future", name: "Future Work", desc: "Actionable concrete future research directions", icon: "🔮" },
-  { id: "keywords", command: "keywords", name: "Key Terms", desc: "Extract 10-15 technical concepts & keywords", icon: "🏷️" },
-  { id: "citations", command: "citations", name: "Citations Analysis", desc: "Analyze references and related work cited", icon: "🔗" },
-  { id: "flashcards", command: "flashcards", name: "Study Flashcards", desc: "Generate 5-10 concept flashcards", icon: "🗂️" },
-  { id: "glossary", command: "glossary", name: "Technical Glossary", desc: "Extract and define complex acronyms", icon: "📖" },
+  {
+    id: "summary",
+    command: "summary",
+    name: "Executive Summary",
+    desc: "Concise 150-200 word academic summary",
+    icon: "📋",
+  },
+  {
+    id: "gaps",
+    command: "gaps",
+    name: "Research Gaps",
+    desc: "Identify unresolved problems & limitations",
+    icon: "🔍",
+  },
+  {
+    id: "future",
+    command: "future",
+    name: "Future Work",
+    desc: "Actionable concrete future research directions",
+    icon: "🔮",
+  },
+  {
+    id: "keywords",
+    command: "keywords",
+    name: "Key Terms",
+    desc: "Extract 10-15 technical concepts & keywords",
+    icon: "🏷️",
+  },
+  {
+    id: "citations",
+    command: "citations",
+    name: "Citations Analysis",
+    desc: "Analyze references and related work cited",
+    icon: "🔗",
+  },
+  {
+    id: "flashcards",
+    command: "flashcards",
+    name: "Study Flashcards",
+    desc: "Generate 5-10 concept flashcards",
+    icon: "🗂️",
+  },
+  {
+    id: "glossary",
+    command: "glossary",
+    name: "Technical Glossary",
+    desc: "Extract and define complex acronyms",
+    icon: "📖",
+  },
 ];
 
 export default function Modals({
@@ -80,7 +123,10 @@ export default function Modals({
           id: "welcome",
           sender: "ai",
           text: `Hello! I have indexed **${selectedPaperForChat.title}** (${selectedPaperForChat.numChunks} chunks).\n\nAsk me anything, or type **\`/\`** to run a specialized skill (e.g., \`/eli5\`, \`/peer-reviewer\`, \`/summary\`).`,
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
           modelUsed: selectedModel,
         },
       ]);
@@ -145,9 +191,15 @@ export default function Modals({
       if (!res.ok) throw new Error(data.error || "Failed to fetch insight");
 
       let parsed = data[target.key];
-      if ((tabKey === "flashcards" || tabKey === "glossary") && typeof parsed === "string") {
+      if (
+        (tabKey === "flashcards" || tabKey === "glossary") &&
+        typeof parsed === "string"
+      ) {
         try {
-          const clean = parsed.replace(/```json/g, "").replace(/```/g, "").trim();
+          const clean = parsed
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
           parsed = JSON.parse(clean);
         } catch {
           // Keep as string if json parse fails
@@ -178,7 +230,7 @@ export default function Modals({
   const handleCopy = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(
-      typeof text === "string" ? text : JSON.stringify(text, null, 2)
+      typeof text === "string" ? text : JSON.stringify(text, null, 2),
     );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -234,7 +286,7 @@ ${insightData.future || "Not loaded"}
   const filteredCommands = allSlashCommands.filter(
     (c) =>
       c.command.toLowerCase().includes(slashQuery.toLowerCase()) ||
-      c.name.toLowerCase().includes(slashQuery.toLowerCase())
+      c.name.toLowerCase().includes(slashQuery.toLowerCase()),
   );
 
   const handleInputChange = (e) => {
@@ -268,7 +320,10 @@ ${insightData.future || "Not loaded"}
       id: Date.now().toString(),
       sender: "user",
       text: userText,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
     setChatMessages((prev) => [...prev, userMsg]);
@@ -282,7 +337,10 @@ ${insightData.future || "Not loaded"}
         id: loadingId,
         sender: "ai",
         text: "Thinking & synthesizing grounded answer...",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         loading: true,
       },
     ]);
@@ -296,14 +354,15 @@ ${insightData.future || "Not loaded"}
       if (userText.startsWith("/")) {
         const slashMatch = userText.match(/^\/([a-zA-Z0-9_-]+)(?:\s+(.*))?$/s);
         const invokedCmd = slashMatch ? slashMatch[1].toLowerCase() : "";
-        const customQuery = slashMatch && slashMatch[2] ? slashMatch[2].trim() : "";
+        const customQuery =
+          slashMatch && slashMatch[2] ? slashMatch[2].trim() : "";
 
         // Check if matching a custom skill
         const matchedSkill = customSkills.find(
           (s) =>
             s.id.toLowerCase() === invokedCmd ||
             s.name.toLowerCase().replace(/\s+/g, "-") === invokedCmd ||
-            s.id.toLowerCase().startsWith(invokedCmd)
+            s.id.toLowerCase().startsWith(invokedCmd),
         );
 
         if (matchedSkill) {
@@ -334,7 +393,9 @@ ${insightData.future || "Not loaded"}
           };
 
           if (builtInMap[invokedCmd]) {
-            skillUsedName = BUILT_IN_COMMANDS.find((b) => b.command === invokedCmd)?.name || invokedCmd;
+            skillUsedName =
+              BUILT_IN_COMMANDS.find((b) => b.command === invokedCmd)?.name ||
+              invokedCmd;
             const res = await fetch(`${API_BASE}${builtInMap[invokedCmd]}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -346,7 +407,10 @@ ${insightData.future || "Not loaded"}
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to run action");
             const val = Object.values(data)[0];
-            answerText = typeof val === "object" ? JSON.stringify(val, null, 2) : String(val);
+            answerText =
+              typeof val === "object"
+                ? JSON.stringify(val, null, 2)
+                : String(val);
           } else {
             // Standard fallback RAG with prompt
             const res = await fetch(`${API_BASE}/ask`, {
@@ -391,11 +455,13 @@ ${insightData.future || "Not loaded"}
                 text: answerText,
                 sourcesCount,
                 skillUsedName,
-                modelUsed: activeModelInfo ? activeModelInfo.label : selectedModel,
+                modelUsed: activeModelInfo
+                  ? activeModelInfo.label
+                  : selectedModel,
                 loading: false,
               }
-            : m
-        )
+            : m,
+        ),
       );
     } catch (err) {
       const errorText = err.message.includes("Document not found")
@@ -409,8 +475,8 @@ ${insightData.future || "Not loaded"}
                 text: errorText,
                 loading: false,
               }
-            : m
-        )
+            : m,
+        ),
       );
     } finally {
       setSendingChat(false);
@@ -445,7 +511,8 @@ ${insightData.future || "Not loaded"}
                     {selectedPaperForInsights.title}
                   </h3>
                   <p className="text-xs text-[#908fa0] truncate">
-                    {selectedPaperForInsights.fileName} • {selectedPaperForInsights.numChunks} Chunks
+                    {selectedPaperForInsights.fileName} •{" "}
+                    {selectedPaperForInsights.numChunks} Chunks
                   </p>
                 </div>
               </div>
@@ -518,7 +585,8 @@ ${insightData.future || "Not loaded"}
                 <div className="flex flex-col items-center justify-center h-48 gap-3">
                   <Loader2 className="w-8 h-8 text-[#8083ff] animate-spin" />
                   <span className="text-xs text-[#908fa0]">
-                    Generating analysis with {loadingInsightModel.toUpperCase()} model...
+                    Generating analysis with {loadingInsightModel.toUpperCase()}{" "}
+                    model...
                   </span>
                 </div>
               ) : (
@@ -546,7 +614,8 @@ ${insightData.future || "Not loaded"}
                   )}
 
                   {/* Render content based on active tab */}
-                  {insightTab === "flashcards" && Array.isArray(insightData.flashcards) ? (
+                  {insightTab === "flashcards" &&
+                  Array.isArray(insightData.flashcards) ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {insightData.flashcards.map((fc, i) => (
                         <div
@@ -556,14 +625,17 @@ ${insightData.future || "Not loaded"}
                           <span className="text-xs font-mono text-[#8083ff] font-semibold">
                             Card #{i + 1}
                           </span>
-                          <h4 className="text-xs font-bold text-[#e5e1e4]">{fc.question}</h4>
+                          <h4 className="text-xs font-bold text-[#e5e1e4]">
+                            {fc.question}
+                          </h4>
                           <p className="text-xs text-[#c7c4d7] bg-[#201f21] p-3 rounded-lg border border-[#353437]/50 mt-1">
                             {fc.answer}
                           </p>
                         </div>
                       ))}
                     </div>
-                  ) : insightTab === "glossary" && Array.isArray(insightData.glossary) ? (
+                  ) : insightTab === "glossary" &&
+                    Array.isArray(insightData.glossary) ? (
                     <div className="flex flex-col gap-3">
                       {insightData.glossary.map((item, i) => (
                         <div
@@ -573,14 +645,19 @@ ${insightData.future || "Not loaded"}
                           <span className="text-xs font-bold text-[#7bd0ff] font-mono">
                             {item.term}
                           </span>
-                          <p className="text-xs text-[#c7c4d7]">{item.definition}</p>
+                          <p className="text-xs text-[#c7c4d7]">
+                            {item.definition}
+                          </p>
                         </div>
                       ))}
                     </div>
-                  ) : insightTab === "similar" && Array.isArray(insightData.similar) ? (
+                  ) : insightTab === "similar" &&
+                    Array.isArray(insightData.similar) ? (
                     <div className="flex flex-col gap-3">
                       {insightData.similar.length === 0 ? (
-                        <p className="text-xs text-[#908fa0]">No related papers found on Semantic Scholar.</p>
+                        <p className="text-xs text-[#908fa0]">
+                          No related papers found on Semantic Scholar.
+                        </p>
                       ) : (
                         insightData.similar.map((p, i) => (
                           <div
@@ -588,7 +665,9 @@ ${insightData.future || "Not loaded"}
                             className="p-4 rounded-xl bg-[#1c1b1d] border border-[#353437] flex flex-col gap-1.5"
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-xs font-bold text-[#e5e1e4]">{p.title}</h4>
+                              <h4 className="text-xs font-bold text-[#e5e1e4]">
+                                {p.title}
+                              </h4>
                               {p.url && (
                                 <a
                                   href={p.url}
@@ -601,7 +680,9 @@ ${insightData.future || "Not loaded"}
                               )}
                             </div>
                             <div className="flex items-center gap-2 text-[11px] text-[#908fa0]">
-                              <span>{p.authors?.join(", ") || "Unknown authors"}</span>
+                              <span>
+                                {p.authors?.join(", ") || "Unknown authors"}
+                              </span>
                               {p.year && <span>• {p.year}</span>}
                             </div>
                           </div>
@@ -666,7 +747,9 @@ ${insightData.future || "Not loaded"}
                 <div
                   key={msg.id}
                   className={`flex flex-col max-w-[88%] ${
-                    msg.sender === "user" ? "ml-auto items-end" : "mr-auto items-start"
+                    msg.sender === "user"
+                      ? "ml-auto items-end"
+                      : "mr-auto items-start"
                   }`}
                 >
                   <div
@@ -699,7 +782,9 @@ ${insightData.future || "Not loaded"}
                       </span>
                     )}
                     {msg.modelUsed && (
-                      <span className="text-[#8083ff]">via {msg.modelUsed}</span>
+                      <span className="text-[#8083ff]">
+                        via {msg.modelUsed}
+                      </span>
                     )}
                     {msg.sourcesCount !== undefined && (
                       <span>• {msg.sourcesCount} chunks</span>
@@ -712,7 +797,9 @@ ${insightData.future || "Not loaded"}
 
             {/* Suggestions Strip */}
             <div className="px-4 py-2 bg-[#0e0e10] border-t border-[#353437]/40 flex gap-2 overflow-x-auto items-center">
-              <span className="text-[10px] uppercase font-mono text-[#908fa0] shrink-0">Try:</span>
+              <span className="text-[10px] uppercase font-mono text-[#908fa0] shrink-0">
+                Try:
+              </span>
               {[
                 "/eli5 Explain core theory",
                 "/peer-reviewer Critique rigor",
@@ -743,7 +830,8 @@ ${insightData.future || "Not loaded"}
                 </div>
                 {filteredCommands.length === 0 ? (
                   <div className="p-3 text-xs text-[#908fa0] text-center">
-                    No matching skill or command found for &quot;/{slashQuery}&quot;
+                    No matching skill or command found for &quot;/{slashQuery}
+                    &quot;
                   </div>
                 ) : (
                   <div className="space-y-0.5">
@@ -755,7 +843,9 @@ ${insightData.future || "Not loaded"}
                         className="w-full text-left p-2 rounded-xl hover:bg-[#201f21] hover:border-[#8083ff]/40 border border-transparent transition-all flex items-center justify-between gap-3 cursor-pointer group"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-base select-none">{cmd.icon}</span>
+                          <span className="text-base select-none">
+                            {cmd.icon}
+                          </span>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs font-semibold text-[#8083ff] group-hover:text-[#c0c1ff]">
@@ -765,7 +855,9 @@ ${insightData.future || "Not loaded"}
                                 {cmd.name}
                               </span>
                             </div>
-                            <p className="text-[11px] text-[#908fa0] truncate">{cmd.desc}</p>
+                            <p className="text-[11px] text-[#908fa0] truncate">
+                              {cmd.desc}
+                            </p>
                           </div>
                         </div>
                         {cmd.isCustom && (

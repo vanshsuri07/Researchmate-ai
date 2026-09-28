@@ -13,7 +13,8 @@ import PdfViewerPanel from "./PdfViewerPanel.jsx";
 import InsightsPanel from "./InsightsPanel.jsx";
 import ChatPanel from "./ChatPanel.jsx";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 export default function WorkspaceView({
   paper,
@@ -51,46 +52,47 @@ export default function WorkspaceView({
     try {
       const res = await fetch(`${API_BASE}/documents/${documentId}/content`);
       const data = await res.json();
-      
+
       if (!data.chunks || data.chunks.length === 0) {
-         showActionMessage("No text found.");
-         return;
+        showActionMessage("No text found.");
+        return;
       }
-      
+
       window.speechSynthesis.cancel();
       let currentIndex = 0;
-      
+
       const speakNextChunk = () => {
-         if (!isReadingRef.current) return;
-         if (currentIndex >= data.chunks.length) {
-            setIsReading(false);
-            isReadingRef.current = false;
-            showActionMessage("Finished reading.");
-            return;
-         }
-         
-         const utterance = new SpeechSynthesisUtterance(data.chunks[currentIndex]);
-         utterance.rate = 1.0; 
-         
-         utterance.onend = () => {
-             currentIndex++;
-             speakNextChunk();
-         };
-         
-         utterance.onerror = (e) => {
-             console.error("TTS Error", e);
-             setIsReading(false);
-             isReadingRef.current = false;
-         };
-         
-         window.speechSynthesis.speak(utterance);
+        if (!isReadingRef.current) return;
+        if (currentIndex >= data.chunks.length) {
+          setIsReading(false);
+          isReadingRef.current = false;
+          showActionMessage("Finished reading.");
+          return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(
+          data.chunks[currentIndex],
+        );
+        utterance.rate = 1.0;
+
+        utterance.onend = () => {
+          currentIndex++;
+          speakNextChunk();
+        };
+
+        utterance.onerror = (e) => {
+          console.error("TTS Error", e);
+          setIsReading(false);
+          isReadingRef.current = false;
+        };
+
+        window.speechSynthesis.speak(utterance);
       };
-      
+
       setIsReading(true);
       isReadingRef.current = true;
       speakNextChunk();
       showActionMessage("Reading started...");
-
     } catch (e) {
       showActionMessage("Failed to load text.");
     }

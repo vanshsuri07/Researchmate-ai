@@ -16,6 +16,7 @@ import {
 export default function ComparePapersCard({
   indexedPapers = [],
   showToast = () => {},
+  selectedLanguage = "English",
 }) {
   const [paperA, setPaperA] = useState(null);
   const [paperB, setPaperB] = useState(null);
@@ -114,48 +115,36 @@ export default function ComparePapersCard({
       return;
     }
     if (!paperA.id || !paperB.id) {
-       showToast("Please select papers from the indexed library dropdown instead of uploading raw files.");
-       return;
+      showToast(
+        "Please select papers from the indexed library dropdown instead of uploading raw files.",
+      );
+      return;
     }
 
     setIsComparing(true);
     setCompareError(null);
     try {
       const res = await fetch("http://localhost:5000/api/compare", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-             document_a_id: paperA.id || paperA.document_id,
-             document_b_id: paperB.id || paperB.document_id,
-             model: "auto"
-         })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_a_id: paperA.id || paperA.document_id,
+          document_b_id: paperB.id || paperB.document_id,
+          model: "auto",
+          language: selectedLanguage,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Comparison failed");
-      
+
       setComparisonResult(data.comparison);
       setShowComparisonModal(true);
-    } catch(err) {
+    } catch (err) {
       setCompareError(err.message);
       showToast("Failed to compare: " + err.message);
     } finally {
       setIsComparing(false);
     }
-  };
-
-  // Sample quick load for testing UI
-  const handleLoadDemo = () => {
-    setPaperA({
-      name: "Attention_Is_All_You_Need.pdf",
-      size: "2.14 MB",
-      title: "Attention Is All You Need (Vaswani et al.)",
-    });
-    setPaperB({
-      name: "BERT_Pretraining_Deep_Bidirectional.pdf",
-      size: "1.85 MB",
-      title: "BERT: Pre-training of Deep Bidirectional Transformers (Devlin et al.)",
-    });
-    showToast("Demo manuscripts loaded for comparison!");
   };
 
   // Copy comparison markdown
@@ -200,22 +189,6 @@ export default function ComparePapersCard({
               Upload two PDFs and generate a side-by-side comparison.
             </p>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {(!paperA || !paperB) && (
-              <button
-                type="button"
-                onClick={handleLoadDemo}
-                className="text-[11px] font-mono text-[#7bd0ff] hover:text-[#a8e0ff] hover:underline transition-colors hidden sm:inline-block cursor-pointer"
-                title="Populate demo papers to preview comparison"
-              >
-                Load Demo
-              </button>
-            )}
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a1d45] text-[#c0c1ff] border border-[#8083ff]/30 shadow-sm">
-              New
-            </span>
-          </div>
         </div>
 
         {/* Side-by-side Upload Dropzones */}
@@ -238,8 +211,8 @@ export default function ComparePapersCard({
               isDraggingA
                 ? "border-[#8083ff] bg-[#8083ff]/10 shadow-[0_0_20px_rgba(128,131,255,0.25)]"
                 : paperA
-                ? "border-[#8083ff]/60 bg-[#1c1b1d]/90 shadow-inner"
-                : "border-[#464554]/70 bg-[#161518]/70 hover:bg-[#1a191d] hover:border-[#8083ff]/50"
+                  ? "border-[#8083ff]/60 bg-[#1c1b1d]/90 shadow-inner"
+                  : "border-[#464554]/70 bg-[#161518]/70 hover:bg-[#1a191d] hover:border-[#8083ff]/50"
             }`}
           >
             {paperA ? (
@@ -280,14 +253,18 @@ export default function ComparePapersCard({
                   className="mt-2 w-full max-w-[200px] bg-[#141316] border border-[#353437] rounded px-2 py-1.5 text-xs text-[#e5e1e4] focus:outline-none"
                   onClick={(e) => e.stopPropagation()}
                   onChange={(e) => {
-                    const selected = indexedPapers.find(p => p.id === e.target.value);
+                    const selected = indexedPapers.find(
+                      (p) => p.id === e.target.value,
+                    );
                     if (selected) setPaperA(selected);
                   }}
                   value=""
                 >
                   <option value="">Select Indexed Paper...</option>
-                  {indexedPapers.map(p => (
-                    <option key={p.id} value={p.id}>{p.title || p.fileName}</option>
+                  {indexedPapers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title || p.fileName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -312,8 +289,8 @@ export default function ComparePapersCard({
               isDraggingB
                 ? "border-[#8083ff] bg-[#8083ff]/10 shadow-[0_0_20px_rgba(128,131,255,0.25)]"
                 : paperB
-                ? "border-[#8083ff]/60 bg-[#1c1b1d]/90 shadow-inner"
-                : "border-[#464554]/70 bg-[#161518]/70 hover:bg-[#1a191d] hover:border-[#8083ff]/50"
+                  ? "border-[#8083ff]/60 bg-[#1c1b1d]/90 shadow-inner"
+                  : "border-[#464554]/70 bg-[#161518]/70 hover:bg-[#1a191d] hover:border-[#8083ff]/50"
             }`}
           >
             {paperB ? (
@@ -354,14 +331,18 @@ export default function ComparePapersCard({
                   className="mt-2 w-full max-w-[200px] bg-[#141316] border border-[#353437] rounded px-2 py-1.5 text-xs text-[#e5e1e4] focus:outline-none"
                   onClick={(e) => e.stopPropagation()}
                   onChange={(e) => {
-                    const selected = indexedPapers.find(p => p.id === e.target.value);
+                    const selected = indexedPapers.find(
+                      (p) => p.id === e.target.value,
+                    );
                     if (selected) setPaperB(selected);
                   }}
                   value=""
                 >
                   <option value="">Select Indexed Paper...</option>
-                  {indexedPapers.map(p => (
-                    <option key={p.id} value={p.id}>{p.title || p.fileName}</option>
+                  {indexedPapers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title || p.fileName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -407,7 +388,7 @@ export default function ComparePapersCard({
                     </span>
                   </div>
                   <p className="text-xs text-[#908fa0] mt-0.5">
-                    Multi-dimensional comparative analysis powered by Gemini RAG
+                    Multi-dimensional comparative analysis powered by FAISS Vector RAG
                   </p>
                 </div>
               </div>
@@ -471,15 +452,17 @@ export default function ComparePapersCard({
               </div>
 
               {compareError ? (
-                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                   {compareError}
-                 </div>
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                  {compareError}
+                </div>
               ) : comparisonResult ? (
-                 <div className="markdown-content prose prose-invert max-w-none text-sm text-[#c7c4d7]">
-                   <ReactMarkdown>{comparisonResult}</ReactMarkdown>
-                 </div>
+                <div className="markdown-content prose prose-invert max-w-none text-sm text-[#c7c4d7]">
+                  <ReactMarkdown>{comparisonResult}</ReactMarkdown>
+                </div>
               ) : (
-                 <div className="text-center text-[#908fa0] py-10">No comparison generated.</div>
+                <div className="text-center text-[#908fa0] py-10">
+                  No comparison generated.
+                </div>
               )}
             </div>
 

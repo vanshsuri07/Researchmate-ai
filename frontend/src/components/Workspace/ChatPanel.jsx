@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import ModelSelector, { MODEL_OPTIONS } from "../ModelSelector.jsx";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const BUILT_IN_COMMANDS = [
   {
@@ -249,7 +250,10 @@ export default function ChatPanel({
 
       // Extract and resolve all @mentioned papers across availablePapers
       const allCandidatePapers = [...(availablePapers || [])];
-      if (paper && !allCandidatePapers.some((p) => (p.document_id || p.id) === activeDocId)) {
+      if (
+        paper &&
+        !allCandidatePapers.some((p) => (p.document_id || p.id) === activeDocId)
+      ) {
         allCandidatePapers.push(paper);
       }
 
@@ -259,7 +263,12 @@ export default function ChatPanel({
       allCandidatePapers.forEach((p) => {
         const id = p.document_id || p.id;
         const title = (p.title || "").toLowerCase();
-        const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+        const fileName = (
+          p.fileName ||
+          p.filename ||
+          p.name ||
+          ""
+        ).toLowerCase();
         const baseName = fileName.replace(/\.pdf$/i, "").toLowerCase();
 
         if (
@@ -276,12 +285,20 @@ export default function ChatPanel({
 
       const mentionTokens = userText.match(/@([^\s,]+)/g) || [];
       mentionTokens.forEach((token) => {
-        const query = token.slice(1).toLowerCase().replace(/^["']|["']$/g, "");
+        const query = token
+          .slice(1)
+          .toLowerCase()
+          .replace(/^["']|["']$/g, "");
         if (query.length > 1) {
           allCandidatePapers.forEach((p) => {
             const id = p.document_id || p.id;
             const title = (p.title || "").toLowerCase();
-            const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+            const fileName = (
+              p.fileName ||
+              p.filename ||
+              p.name ||
+              ""
+            ).toLowerCase();
             if (
               title.includes(query) ||
               fileName.includes(query) ||
@@ -296,7 +313,12 @@ export default function ChatPanel({
         }
       });
 
-      const docIds = matchedDocIds.length > 0 ? matchedDocIds : (activeDocId ? [activeDocId] : []);
+      const docIds =
+        matchedDocIds.length > 0
+          ? matchedDocIds
+          : activeDocId
+            ? [activeDocId]
+            : [];
       const primaryDocId = docIds[0] || activeDocId;
 
       if (!primaryDocId) {

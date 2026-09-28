@@ -63,7 +63,7 @@ export default function ActiveIngestionCard({ activeUpload, totalPapers }) {
             </div>
             <span className="text-xs font-semibold text-[#e5e1e4]">Pipeline Standing By</span>
             <p className="text-[11px] text-[#908fa0] leading-relaxed">
-              Upload manuscripts to extract text, build semantic vector indexes, and run Gemini AI analysis.
+              Upload manuscripts to extract text, build semantic vector indexes, and run AI RAG analysis.
             </p>
           </div>
         )}

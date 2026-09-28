@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import ModelSelector, { MODEL_OPTIONS } from "./ModelSelector.jsx";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const BUILT_IN_COMMANDS = [
   {
@@ -109,6 +110,7 @@ export default function FloatingChatWidget({
   onSelectPaper,
   selectedModel,
   setSelectedModel,
+  selectedLanguage = "English",
   isPoppedOut,
   setIsPoppedOut,
   isVisible,
@@ -308,12 +310,19 @@ export default function FloatingChatWidget({
 
       // Extract and resolve all @mentioned papers across availablePapers and mentionedPapers
       const allCandidatePapers = [...(availablePapers || [])];
-      if (paper && !allCandidatePapers.some((p) => (p.document_id || p.id) === activeDocId)) {
+      if (
+        paper &&
+        !allCandidatePapers.some((p) => (p.document_id || p.id) === activeDocId)
+      ) {
         allCandidatePapers.push(paper);
       }
       if (mentionedPapers && mentionedPapers.length > 0) {
         mentionedPapers.forEach((mp) => {
-          if (!allCandidatePapers.some((p) => (p.document_id || p.id) === (mp.document_id || mp.id))) {
+          if (
+            !allCandidatePapers.some(
+              (p) => (p.document_id || p.id) === (mp.document_id || mp.id),
+            )
+          ) {
             allCandidatePapers.push(mp);
           }
         });
@@ -326,7 +335,12 @@ export default function FloatingChatWidget({
       allCandidatePapers.forEach((p) => {
         const id = p.document_id || p.id;
         const title = (p.title || "").toLowerCase();
-        const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+        const fileName = (
+          p.fileName ||
+          p.filename ||
+          p.name ||
+          ""
+        ).toLowerCase();
         const baseName = fileName.replace(/\.pdf$/i, "").toLowerCase();
 
         if (
@@ -344,12 +358,20 @@ export default function FloatingChatWidget({
       // Also check individual @tokens
       const mentionTokens = userText.match(/@([^\s,]+)/g) || [];
       mentionTokens.forEach((token) => {
-        const query = token.slice(1).toLowerCase().replace(/^["']|["']$/g, "");
+        const query = token
+          .slice(1)
+          .toLowerCase()
+          .replace(/^["']|["']$/g, "");
         if (query.length > 1) {
           allCandidatePapers.forEach((p) => {
             const id = p.document_id || p.id;
             const title = (p.title || "").toLowerCase();
-            const fileName = (p.fileName || p.filename || p.name || "").toLowerCase();
+            const fileName = (
+              p.fileName ||
+              p.filename ||
+              p.name ||
+              ""
+            ).toLowerCase();
             if (
               title.includes(query) ||
               fileName.includes(query) ||
@@ -365,7 +387,12 @@ export default function FloatingChatWidget({
       });
 
       // Target document IDs: If user specifically mentioned paper(s), use ONLY those! Otherwise fallback to active document.
-      const docIds = matchedDocIds.length > 0 ? matchedDocIds : (activeDocId ? [activeDocId] : []);
+      const docIds =
+        matchedDocIds.length > 0
+          ? matchedDocIds
+          : activeDocId
+            ? [activeDocId]
+            : [];
       const primaryDocId = docIds[0] || activeDocId;
 
       if (!primaryDocId) {
@@ -395,6 +422,7 @@ export default function FloatingChatWidget({
               document_id: primaryDocId,
               skill_id: matchedSkill.id,
               model: selectedModel,
+              language: selectedLanguage,
               custom_query: customQuery,
             }),
           });
@@ -421,6 +449,7 @@ export default function FloatingChatWidget({
               body: JSON.stringify({
                 document_id: primaryDocId,
                 model: selectedModel,
+                language: selectedLanguage,
               }),
             });
             const data = await res.json();
@@ -458,6 +487,7 @@ export default function FloatingChatWidget({
                 notes: notes,
                 question: userText,
                 model: selectedModel,
+                language: selectedLanguage,
               }),
             });
             const data = await res.json();
@@ -477,8 +507,7 @@ export default function FloatingChatWidget({
             const storedBookmarks =
               JSON.parse(localStorage.getItem(`bookmarks_${id}`)) || [];
             storedHighlights.forEach((h) => {
-              if (h.note)
-                notes.push(`Note on "${h.selectedText}": ${h.note}`);
+              if (h.note) notes.push(`Note on "${h.selectedText}": ${h.note}`);
               else notes.push(`Highlight: "${h.selectedText}"`);
             });
             storedBookmarks.forEach((b) => {
@@ -495,6 +524,7 @@ export default function FloatingChatWidget({
             notes: notes,
             question: userText,
             model: selectedModel,
+            language: selectedLanguage,
           }),
         });
         const data = await res.json();
