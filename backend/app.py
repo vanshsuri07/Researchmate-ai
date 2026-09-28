@@ -46,6 +46,14 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 import json
 
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": ["https://researchmate-ai-two.vercel.app/"]
+        }
+    },
+)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 STORAGE_FOLDER = os.path.join(os.path.dirname(__file__), "storage")
 PDF_FOLDER = os.path.join(STORAGE_FOLDER, "pdfs")
