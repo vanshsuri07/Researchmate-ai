@@ -188,7 +188,7 @@ def get_document_pdf(doc_id):
         except Exception as e:
             print(f"[PDF Fetch] Failed to download arXiv PDF: {e}")
 
-    return jsonify({"error": "PDF file not found locally", "has_pdf": false}), 404
+    return jsonify({"error": "PDF file not found locally", "has_pdf": False}), 404
 
 
 @app.route("/api/documents/<doc_id>/content", methods=["GET"])
@@ -245,7 +245,10 @@ def upload_document():
     except Exception as e:
         if os.path.exists(save_path):
             os.remove(save_path)
-        raise e
+        print(f"Error during upload: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 def _get_document_or_404(doc_id):
